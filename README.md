@@ -203,3 +203,16 @@
   not sure what to do.
   4. We use the /match API's 'usageKey' as gbifId and taxonId. Missing from this API result is authorship. Not sure why.
   5. Keep track of taxonId values for higher-order taxa and output to file for processing later.
+  
+  ### File: 09_load_taxon_ids_from_file.js
+
+  Purpose: Fill-in higher-order taxon data in val_speces db.
+
+  Specifics:
+
+  Populate the val_gbif_taxon_id table with taxonIds from a local file.
+
+  Prior to running this, truncate val_gbif_taxon_id.
+
+  After running this, run 06 file to GET and INSERT missing data.
+
