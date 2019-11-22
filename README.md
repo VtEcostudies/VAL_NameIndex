@@ -10,7 +10,7 @@
   includes checklists. Instead, they provide an occurrence download that
   enumerates species.
 
-  File: 01_convert_gbif_to_val.js
+  ### File: 01_convert_gbif_to_val.js
 
   Notes:
 
@@ -48,7 +48,7 @@
   of GBIF index 4. We find authorship by removing the leading 1, 2 or 3 tokens of
   scientificName.
 
-  File: 02_add_missing_accepted_id_from_gbif.js
+  ### File: 02_add_missing_accepted_id_from_gbif.js
 
   Specifics:
 
@@ -81,7 +81,7 @@
   4. Iterate over acceptedNameUsageIDs in result set, hit GBIF API for those
   taxonIds, add them to our original val_species.txt.
 
-  File: 03_post_process_val_species_for_nameindexer.js
+  ### File: 03_post_process_val_species_for_nameindexer.js
 
   Specifics:
 
@@ -94,7 +94,7 @@
 
   TO-DO: make scientificName NOT NULL in the pg db.
 
-  File: 04_gbif_to_val_db.js
+  ### File: 04_gbif_to_val_db.js
 
   Purpose: Populate a PostGRES database with the output of the previous steps.
 
@@ -141,7 +141,7 @@
   acceptedScientificName. We find authorship by removing the leading 1 or 2
   tokens of scientificName.
 
-  File: 05_list_all_taxon_ids.js
+  ### File: 05_list_all_taxon_ids.js
 
   Purpose: Create a list of taxonIds for all referenced higher-order taxa in the
   source species list file. Populate a single-column table in the PostGRES db
