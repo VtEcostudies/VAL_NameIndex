@@ -1,111 +1,151 @@
-Project: gbif_dwca_split
+  Author: Jason Loomis
 
-Purpose:
-  1) Parse aggregate GBIF download DWcA into individual datasets/providers.
-  2) Using processed files from (1), parse metadata, citations, etc. into files pertaining just
-  to their dataset's data into separate folders named 'datasetKey'.
-  3) Using processed files from (1), parse verbatim.txt similar to occurrence.txt.
-  4) Use GBIF API and each datasetKey to POST/PUT separate data resources to LA Collectory.
-  5) Upload zipped DwCA to public folder on target LA node for use by biocache-ingest.
+  Project: VAL_Species
 
-Notes:
-  dataset/provider eml is stored as /dataset/datasetKey.xml and referenced in
-  occurrence.txt in the field named datasetKey.
+  Parse GBIF species occurrence download DwCA into a VAL species list DwCA that 
+  can be used by the VAL ALA nameindexer. This processed output will also serve
+  as the basis for the VAL Vermont Life List (or the VT Species Registry).
 
-File: occurrence_split.js
+  As of the fall of 2019, the GBIF API does not provide a species download that
+  includes checklists. Instead, they provide an occurrence download that
+  enumerates species.
 
-Specifics:
-- Parse occurrence.txt by '\n' terminated line looking for datasetKey
-- Create a directory from each datasetKey with dataset sub-dir eg. datasetKey/dataset
-- Copy ./dataset/datasetKey.xml to ./datsetKey/dataset/datasetKey.xml
-- Copy ./meta.xml to ./datasetKey/meta.xml
-- Copy ./metadata.xml to ./datasetKey/metadata.xml
-- Copy ./rights.txt to ./datasetKey/rights.txt (TODO: clean to just its own dataset provider)
-- Copy ./citations.txt to ./datasetKey/citations.txt (TODO: clean to just its own dataset provider)
-- Create a new occurrence.txt in the ./datasetKey directory with just occurrences
-  for that datasetKey
-- Create an array like gbifId=datasetKey and put into file gbifId_datasetKey.txt
-- After processing occurrence.txt, use that array-in-file to process
-  verbatim.txt and multimedia.txt into their datasetKey directories.
-- Also create the inverse array, datasetKey=[gbifId,gbifId,...] and put into file
-  called datasetKey_gbifArray.txt.
-- For each new datasetKey in occurrence.txt repeat the above steps
+  File: 01_convert_gbif_to_val.js
 
-File: verbatim_split.js
+  Notes:
 
-Specifics:
-- Split verbatim.txt into datasetKey directories using gbifId-to-datesetKey
-array-in-file generated from processing occurrence.txt, which contains the
-only link between gbifId and datasetKey.
+  Specifics:
 
-Assumptions:
-- occurrence_split has successfully run against occurrence.txt.
-- gbifIds in verbatim.txt are a subset of those in occurrence.txt
-- gbifIds uniquely map to a single GBIF datasetKey
+  index GBIF name              index	ALA name
+  1  taxonKey                  1	taxonID
+  2  scientificName            2	scientificName
+  3  acceptedTaxonKey          3	acceptedNameUsageID
+  4  acceptedScientificName    4	acceptedNameUsage
+  5  taxonRank                 5	taxonRank
+  6  taxonomicStatus           6	taxonomicStatus
+  8  kingdomKey	               7	parentNameUsageID
+  10 phylumKey                 8	nomenclaturalCode
+  12 classKey                  9	scientificNameAuthorship
+  14 orderKey                  10	specificEpithet
+  16 familyKey                 11	infraspecificEpithet
+  18 genusKey                  12	taxonRemarks
+  20 speciesKey
+                              ...also add these for future checklists:
+                              13  datasetName
+                              14  datasetID
 
-File: multimedia_split.js
+  - Conversions for index values 1-6 are 1:1.
 
-Specifics:
-- Split multimedia.txt into datasetKey directories using gbifId-to-datesetKey
-array-in-file generated from processing occurrence.txt, which contains the
-only link between gbifId and datasetKey.
+  - To derive ALA index 7, parentNameUsageID, we find the second-to-last value of
+  GBIF index 8-20 and use that.
 
-Assumptions:
-- occurrence_split has successfully run against occurrence.txt.
-- gbifIds in multimedia.txt are a subset of those in occurrence.txt
-- gbifIds uniquely map to a single GBIF datasetKey
+  - ALA index 8, nomenclaturalCode, will be assigned the static value 'GBIF'
+  because the source nomenclatural index is the GBIF backbone, which itself
+  comprises multiple nomenclatureal indices and is where this initial dataset
+  originated.
 
-File: citations_rights_get.js
+  - ALA index 9, scientificNameAuthorship, will be derived from the parsed ending
+  of GBIF index 4. We find authorship by removing the leading 1, 2 or 3 tokens of
+  scientificName.
 
-Specifics:
-Create citations.txt and rights.txt for each datasetKey in a subdirectory with
-that name using the datasetKey array datesetKey_gbifArray array-in-file
-generated from processing occurrence.txt, which contains the only link
-between gbifId and datasetKey.
+  File: 02_add_missing_accepted_id_from_gbif.js
 
-For each datasetKey, query the GBIF API http://api.gbif.org/v1/dataset/datasetKey
-to retrieve citations and rights information for the dataset.
+  Specifics:
 
-Assumptions:
-- occurrence_split has successfully run against occurrence.txt.
-- gbifIds in citation.txt are a subset of those in occurrence.txt
-- gbifIds uniquely map to a single GBIF datasetKey
-- datasetKey is a persistent, immutable value we can use to create
-  citation.txt (and others)
+  While converting gbif species to val species, we found that the dataset
+  had taxa rows with acceptedNameUsageID which were not defined within the file.
+  This causes a referential dead-end that needs remedy.
 
-File: api_create_resources.js
+  In the previous step, created by the file 01_convert_gbif_to_val.js, we created
+  2 files:
 
-Specifics:
-- use config.js to define a local folder holding source data, remote url hosting collectory API
-- use local datasetKey_gbifArray.txt to iterate over datasetKeys and create a local array
-- call GBIF API for datasetKey dependent data (not all was added to the original aggregate download)
-- Create (POST) or Update (PUT) LA Collectory Resources from datasetKey data gather from GBIF
-- Zip DwCA dataset files into archive named 'datasetKey.zip'
-- Upload DwCA archive to LA Collectory node public folder (eg. 'gbif_split')
+  1) val_species.txt
+  2) val_species_mistmatch.txt
 
-ToDo:
-- zip DwCA dataset files into archive named 'datasetKey.zip'
-- upload data file to the server for ingestion
+  File (2) is all rows in val_species.txt where taxonId != acceptedNameUsageID. That mismatch
+  is not itself a problem. However, a sub-set of those values refer to an acceptedNameUsageID
+  which is not elsewhere defined with a primary taxonID within the same file val_species.txt.
+  This is a problem: accepted taxa have no definition.
 
-Notes:
-For each datasetKey, POST/PUT to the VAL API:
+  There was not an easy way to write code to search for each missing acceptedNameUsageID
+  within the file, and that's what relational databases are for, so we imported both
+  into postgres and used a query to select just those acceptedNameUsageIDs that were
+  not defined as primary taxonIDs.
 
-val-docker (spring of 2019):
-http://beta.vtatlasoflife.org/collectory/ws/{resourceType}/{typeId}
+  The solution:
 
-val-ansible-production (fall of 2019):
-https://collectory.vtatlasoflife.org/ws/{}/{}
+  1) Load val_species.txt into postgres table val_species
+  2) Load val_mismatch.txt into postgres table val_mismatch
+  3) Query RIGHT JOIN on val_mismatch.acceptedNameUsageID NOT in
+  val_species.taxonId and output to file. => 1357 results
+  4) Iterate over acceptedNameUsageIDs in result set, hit GBIF API for those
+  taxonIds, add them to our original val_species.txt.
 
-to create/update resources for dataset upload and ingestion:
+  File: 03_post_process_val_species_for_nameindexer.js
 
-- Institutions
-- Collections (?)
-- dataProviders
-- dataResources
+  Specifics:
 
-Assumptions:
-- occurrence_split has successfully run against occurrence.txt.
-- gbifIds in citation.txt are a subset of those in occurrence.txt
-- gbifIds uniquely map to a single GBIF datasetKey
-- datasetKey is a persistent, immutable value we can use to create
-  citation.txt (and others)
+  The resulting output from files 01 and 02 was used as source DwCA for the ALA
+  nameindexer. This did not work, because several rows of data were missing
+  scientificName.
+
+  This file uses the post-processed output file from the databse and amends it
+  by copying accpetedNameUsage to scientificName where scientificName is null.
+
+  TO-DO: make scientificName NOT NULL in the pg db.
+
+  File: 04_gbif_to_val_db.js
+
+  Purpose: Populate a PostGRES database with the output of the previous steps.
+
+  Specifics:
+
+  index GBIF name
+  1  taxonKey
+  2  scientificName
+  3  acceptedTaxonKey
+  4  acceptedScientificName
+  5  taxonRank
+  6  taxonomicStatus
+  7  kingdom
+	8  kingdomKey
+  9  phylum
+	10 phylumKey
+  11 class
+	12 classKey
+  13 order
+  14 orderKey
+  15 family
+  16 familyKey
+  17 genus
+  18 genusKey
+  19 species
+  20 speciesKey
+
+  - The database ingests all columns, but renames them to DwCA-compliant names,
+  which are used by VAL.
+
+  - To derive parentNameUsageId, we find the second-to-last non-zero value of
+  GBIF kingdomKey, phylumKey, classKey, orderKey, familyKey, genusKey, or
+  speciesKey. Special cases:
+
+      - If kingdomKey is the last key, we assign parentNameUsageId to itself.
+      - If acceptedScientificName contains subsp. or var., we assign speciesKey
+      to parentNameUsageId.
+
+  - nomenclaturalCode, will be assigned the static value 'GBIF' for
+  Catalogue Of Life, the source nomenclatural index of the GBIF backbone, which
+  is where this initial dataset originated.
+
+  - scientificNameAuthorship, will be derived from the parsed ending of GBIF
+  acceptedScientificName. We find authorship by removing the leading 1 or 2
+  tokens of scientificName.
+
+  File: 05_list_all_taxon_ids.js
+
+  Purpose: Create a list of taxonIds for all referenced higher-order taxa in the
+  source species list file. Populate a single-column table in the PostGRES db
+  with that list of unique taxonIds.
+
+  Later, in file 06, we query missing primary taxonIds in table val_species which
+  are listed in table val_gbif_taxon_id, then add them to the val_species table.

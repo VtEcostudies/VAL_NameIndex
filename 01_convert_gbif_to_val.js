@@ -1,51 +1,53 @@
 /*
-  Author: Jason Loomis
+Author: Jason Loomis
 
-  Project: GBIF_Species_to_VAL_Species
+Project: VAL_Species
 
-  Parse GBIF species download DWcA into a VAL species list DwCA that can be
-  used by the VAL ALA nameindexer.
+Parse GBIF species occurrence download DwCA into a VAL species list DwCA that
+can be used by the VAL ALA nameindexer. This processed output will also serve
+as the basis for the VAL Vermont Life List (or the VT Species Registry).
 
-  As of the fall of 2019, the GBIF API does not provide a species download that
-  includes checklists. Instead, they provide an occurrence download that
-  enumerates species.
+As of the fall of 2019, the GBIF API does not provide a species download that
+includes checklists. Instead, they provide an occurrence download that
+enumerates species.
 
-  File: 01_convert_gbif_to_val.js
+File: 01_convert_gbif_to_val.js
 
-  Notes:
+Notes:
 
-  Specifics:
+Specifics:
 
-  index GBIF name              index	ALA name
-  1  taxonKey                  1	taxonID
-  2  scientificName            2	scientificName
-  3  acceptedTaxonKey          3	acceptedNameUsageID
-  4  acceptedScientificName    4	acceptedNameUsage
-  5  taxonRank                 5	taxonRank
-  6  taxonomicStatus           6  taxonomicStatus
-	8  kingdomKey	               7  parentNameUsageID
-	10 phylumKey                 8  nomenclaturalCode
-	12 classKey                  9  scientificNameAuthorship
-  14 orderKey                  10 specificEpithet
-  16 familyKey                 11 infraspecificEpithet
-  18 genusKey                  12  taxonRemarks
-  20 speciesKey
-                              ...also add these for future checklists:
-                              13  datasetName
-                              14  datasetID
+index GBIF name              index	ALA name
+1  taxonKey                  1	taxonID
+2  scientificName            2	scientificName
+3  acceptedTaxonKey          3	acceptedNameUsageID
+4  acceptedScientificName    4	acceptedNameUsage
+5  taxonRank                 5	taxonRank
+6  taxonomicStatus           6	taxonomicStatus
+8  kingdomKey	               7	parentNameUsageID
+10 phylumKey                 8	nomenclaturalCode
+12 classKey                  9	scientificNameAuthorship
+14 orderKey                  10	specificEpithet
+16 familyKey                 11	infraspecificEpithet
+18 genusKey                  12	taxonRemarks
+20 speciesKey
+                            ...also add these for future checklists:
+                            13  datasetName
+                            14  datasetID
 
-  - Conversions for index values 1-6 are 1:1.
+- Conversions for index values 1-6 are 1:1.
 
-  - To derive ALA index 7, parentNameUsageID, we find the second-to-last value of
-  GBIF index 8-20 and use that.
+- To derive ALA index 7, parentNameUsageID, we find the second-to-last value of
+GBIF index 8-20 and use that.
 
-  - ALA index 8, nomenclaturalCode, will be assigned the static value 'GBIF' for
-  Catalogue Of Life, the source nomenclatural index of the GBIF backbone, which
-  is where this initial dataset originated.
+- ALA index 8, nomenclaturalCode, will be assigned the static value 'GBIF'
+because the source nomenclatural index is the GBIF backbone, which itself
+comprises multiple nomenclatureal indices and is where this initial dataset
+originated.
 
-  - ALA index 9, scientificNameAuthorship, will be derived from the parsed ending
-  of GBIF index 4. We find authorship by removing the leading 1 or 2 tokens of
-  scientificName.
+- ALA index 9, scientificNameAuthorship, will be derived from the parsed ending
+of GBIF index 4. We find authorship by removing the leading 1, 2 or 3 tokens of
+scientificName.
 
 */
 

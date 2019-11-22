@@ -1,18 +1,20 @@
 /*
   Author: Jason Loomis
 
-  Project: GBIF_Species_to_VAL_Species
+  Project: VAL_Species
 
-  Parse GBIF species download DWcA into a VAL species list DwCA that can be
-  used by the VAL ALA nameindexer.
-
-  As of the fall of 2019, the GBIF API does not provide a species download that
-  includes checklists. Instead, they provide an occurrence download that
-  enumarates species.
-
-  File: 03_update_core_from_gbif.js
+  File: 03_post_process_val_species_for_nameindexer.js
 
   Specifics:
+
+  The resulting output from files 01 and 02 was used as source DwCA for the ALA
+  nameindexer. This did not work, because several rows of data were missing
+  scientificName.
+
+  This file uses the post-processed output file from the databse and amends it
+  by copying accpetedNameUsage to scientificName where scientificName is null.
+
+  TO-DO: make scientificName NOT NULL in the pg db.
 
 */
 

@@ -1,14 +1,7 @@
 /*
   Author: Jason Loomis
 
-  Project: GBIF_Species_to_VAL_Species
-
-  Parse GBIF species download DWcA into a VAL species list DwCA that can be
-  used by the VAL ALA nameindexer.
-
-  As of the fall of 2019, the GBIF API does not provide a species download that
-  includes checklists. Instead, they provide an occurrence download that
-  enumarates species.
+  Project: VAL_Species
 
   File: 02_add_missing_accepted_id_from_gbif.js
 
@@ -30,7 +23,7 @@
   This is a problem: accepted taxa have no definition.
 
   There was not an easy way to write code to search for each missing acceptedNameUsageID
-  withing the file, and that's what relational databases are for, so we imported both
+  within the file, and that's what relational databases are for, so we imported both
   into postgres and used a query to select just those acceptedNameUsageIDs that were
   not defined as primary taxonIDs.
 
