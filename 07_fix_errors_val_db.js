@@ -1,18 +1,24 @@
 /*
   Author: Jason Loomis
 
-  Project: GBIF_Species_to_VAL_Species
-
-  Parse GBIF species download DWcA into a VAL species list DwCA that can be
-  used by the VAL ALA nameindexer.
-
-  As of the fall of 2019, the GBIF API does not provide a species download that
-  includes checklists. Instead, they provide an occurrence download that
-  enumarates species.
+  Project: VAL_Species
 
   File: 07_fix_errors_val_db.js
 
+  Purpose: Find and fix known errors in the val_species table.
+
   Specifics:
+
+  - write an SQL statement to find the errors
+  - extract gbifId from each row
+  - query the GBIF species API for corrected values
+  - update val_species with the corrected data
+
+  Add new queries here as needed.
+
+  To use a new query, add a new query string to the function getValErrors() as a
+  new array element, and set the value of the global varialble err_id to the new
+  array index.
 
 */
 

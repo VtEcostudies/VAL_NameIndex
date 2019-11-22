@@ -5,10 +5,14 @@
 
   File: 06_find_missing_gbif_id_add_to_val_db.js
 
-  Purpose:
-  
+  Purpose: Fix broken taxonomy tree in val_species table.
+
   Specifics:
 
+  Query missing primary taxonIds in table val_species vs those listed
+  in table val_gbif_taxon_id. Add missing taxa to the val_species table.
+
+  Query the GBIF species API for complete record data for each missing taxonId.
 */
 
 //https://nodejs.org/api/readline.html

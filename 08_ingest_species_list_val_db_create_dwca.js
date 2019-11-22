@@ -1,34 +1,33 @@
 /*
   Author: Jason Loomis
 
-  Project: GBIF_Species_to_VAL_Species
-
-  Parse GBIF species download DWcA into a VAL species list DwCA that can be
-  used by the VAL ALA nameindexer.
-
-  As of the fall of 2019, the GBIF API does not provide a species download that
-  includes checklists. Instead, they provide an occurrence download that
-  enumarates species.
+  Project: VAL_Species
 
   File: 08_ingest_species_list_val_db_create_dwca.js
 
+  Purpose: Incorporate new VT Species Registry checklist files into the val_species
+  database, create a corrected taxon file for a future DwCA checklist to be
+  published on our IPT, fill-in any missing higher-order taxa needed to support
+  these new species in the ALA nameindexer, and create log files to keep an
+  account of what was done.
+
   Specifics:
 
-  Kent has a mosquito species file. He wants to:
+  Kent has a mosquito species file, and some more files. He wants to:
 
-  1) include these species in val_species table of val_db with proper taxonIds, etc.
-  2) produce a DwCA taxon.txt file with proper taxonIds, etc. for publishing on our IPT
+  1. include these species in val_species table of val_db with proper taxonIds, etc.
+  2. produce a DwCA taxon.txt file with proper taxonIds, etc. for publishing on our IPT
 
   To do that we will:
 
-  1) open the file and parse rows into object having key:value pairs for all data
-  2) using scientificName w/o author lookup/find that taxon on GBIF API:
-    a) http://api.gbif.org/v1/species/match?name=Aedes%20cinereus
-    b) http://api.gbif.org/v1/species?name=Aedes%20cinereus
-  3) (a) looks better. if result has matchType=='EXACT', then we use it. if matchType=='FUZZY',
+  1. open the file and parse rows into object having key:value pairs for all data
+  2. using scientificName w/o author lookup/find that taxon on GBIF API:
+    a. http://api.gbif.org/v1/species/match?name=Aedes%20cinereus
+    b. http://api.gbif.org/v1/species?name=Aedes%20cinereus
+  3. (a) looks better. if result has matchType=='EXACT', then we use it. if matchType=='FUZZY',
   not sure what to do.
-  4) We use the /match API's 'usageKey' as gbifId and taxonId. Missing from this API result is authorship. Not sure why.
-  5) Keep track of taxonId values for higher-order taxa and output to file for processing later.
+  4. We use the /match API's 'usageKey' as gbifId and taxonId. Missing from this API result is authorship. Not sure why.
+  5. Keep track of taxonId values for higher-order taxa and output to file for processing later.
 
 */
 
@@ -147,8 +146,8 @@ Fields returned from this endpoint are different from the raw /species output.
 We trasp errors in convertGbifToVal where we compare incoming scientificName to
 GBIF canonicalName.
 */
-function matchGbifSpecies(srcRow, idx) {
-  var name = srcRow.scientificName.trim();
+function matchGbifSpecies(src, idx) {
+  var name = src.scientificName.trim();
 
   //console.log('matchGbifSpecies | cleaned: ', name);
 
@@ -161,12 +160,9 @@ function matchGbifSpecies(srcRow, idx) {
     Request.get(parms, (err, res, body) => {
       if (err) {
         reject(err);
-      } else if (res.statusCode > 299) {
-        log(`matchGbifSpecies(${srcRow.scientificName}) | ${res.statusCode}`);
-        reject(res);
       } else {
-        log(`matchGbifSpecies(${srcRow.scientificName}) | ${res.statusCode}`);
-        body.src = srcRow; //attach incoming source row-object to returned object for downstream use
+        log(`matchGbifSpecies(${src.scientificName}) | ${res.statusCode}`);
+        body.src = src; //attach incoming source row-object to returned object for downstream use
         body.idx = idx; //attach incoming row index to returned object for downstream use
         resolve(body);
       }
@@ -430,7 +426,7 @@ function buildTaxonIdArr(val, idx) {
 }
 
 /*
-Iterate over local taxonIdObj and write it a file in the same location as the
+Iterate over local taxonIdObj and write it to a file in the same location as the
 incoming taxon file.
 
 This file is used later to populate the PostGRES table val_gbif_taxon_id, which
