@@ -1,0 +1,69 @@
+2019-11-14 19:57:57,836 WARN : [DwcaNameIndexer] - No accepted document for Monotropa hypopitys 8249145 -> 7327682
+2019-11-14 19:57:57,848 WARN : [DwcaNameIndexer] - No accepted document for Pipistrellus subflavus 5218474 -> 8885590
+2019-11-14 19:57:57,858 WARN : [DwcaNameIndexer] - No accepted document for Petasites palmatus 6064615 -> 6300538
+2019-11-14 19:57:57,860 WARN : [DwcaNameIndexer] - No accepted document for Lamprocapnos spectabilis 2888564 -> 7314977
+2019-11-14 19:57:57,875 WARN : [DwcaNameIndexer] - No accepted document for Chara schweinitzii 5710331 -> 5710330
+2019-11-14 19:57:57,877 WARN : [DwcaNameIndexer] - No accepted document for Artemisia canadensis 6064310 -> 4230878
+2019-11-14 19:57:57,899 WARN : [DwcaNameIndexer] - No accepted document for Acer ginnala 3189845 -> 4925890
+2019-11-14 19:57:57,900 WARN : [DwcaNameIndexer] - No accepted document for Glyceria fernaldii 4106660 -> 8063143
+2019-11-14 19:57:57,940 WARN : [DwcaNameIndexer] - No accepted document for Carex viridula 2722307 -> 7646626
+2019-11-14 19:57:57,942 WARN : [DwcaNameIndexer] - No accepted document for Wallengrenia egeremet 1950396 -> 6202986
+2019-11-14 19:57:57,945 WARN : [DwcaNameIndexer] - No accepted document for Carex viridula viridula 7227085 -> 7646626
+2019-11-14 19:57:57,946 WARN : [DwcaNameIndexer] - No accepted document for Dolichovespula arctica 9474126 -> 6247467
+2019-11-14 19:57:57,960 WARN : [DwcaNameIndexer] - No accepted document for Alnus viridis crispa 2876281 -> 8279572
+2019-11-14 19:57:57,973 WARN : [DwcaNameIndexer] - No accepted document for Stachys palustris homotricha 6412660 -> 7226069
+2019-11-14 19:57:58,009 WARN : [DwcaNameIndexer] - No accepted document for Stenopterobia curvula 7404944 -> 7230980
+2019-11-14 19:57:58,014 WARN : [DwcaNameIndexer] - No accepted document for Riccia sullivantii 5710083 -> 9526826
+2019-11-14 19:57:58,016 WARN : [DwcaNameIndexer] - No accepted document for Athyrium angustum 6388270 -> 5644779
+2019-11-14 19:57:58,064 WARN : [DwcaNameIndexer] - No accepted document for Solidago randii 6065147 -> 5704380
+2019-11-14 19:57:58,069 WARN : [DwcaNameIndexer] - No accepted document for Vicia angustifolia 2975037 -> 2975035
+2019-11-14 19:57:58,084 WARN : [DwcaNameIndexer] - No accepted document for Gallinula galeata 7340222 -> 5228200
+2019-11-14 19:57:58,084 WARN : [DwcaNameIndexer] - No accepted document for Antennaria neodioica 6064840 -> 5702285
+2019-11-14 19:57:58,085 WARN : [DwcaNameIndexer] - No accepted document for Pteridium aquilinum latiusculum 5532541 -> 7265890
+2019-11-14 19:57:58,093 WARN : [DwcaNameIndexer] - No accepted document for Athyrium filix-femina angustum 8156907 -> 5644779
+2019-11-14 19:57:58,103 WARN : [DwcaNameIndexer] - No accepted document for Thlaspi arvense L. 3052680 -> 7225691
+2019-11-14 19:57:58,104 WARN : [DwcaNameIndexer] - No accepted document for Valeriana dioica sylvatica 4094887 -> 6401691
+2019-11-14 19:57:58,108 WARN : [DwcaNameIndexer] - No accepted document for Eleocharis olivacea Torr. 2717466 -> 2717462
+2019-11-14 19:57:58,174 WARN : [DwcaNameIndexer] - No accepted document for Dendroica petechia aestiva 6172972 -> 8954185
+2019-11-14 19:57:58,177 WARN : [DwcaNameIndexer] - No accepted document for Furcula occidentalis 5118524 -> 6201620
+2019-11-14 19:57:58,208 WARN : [DwcaNameIndexer] - No accepted document for Castilleja pallida septentrionalis 6290078 -> 3170629
+2019-11-14 19:57:58,218 WARN : [DwcaNameIndexer] - No accepted document for Alnus viridis 2876280 -> 8175012
+2019-11-14 19:57:58,222 WARN : [DwcaNameIndexer] - No accepted document for Chara coronata 8617725 -> 7229779
+2019-11-14 19:57:58,252 WARN : [DwcaNameIndexer] - No accepted document for Pteridium aquilinum champlainense 5275013 -> 7265890
+2019-11-14 19:57:58,252 WARN : [DwcaNameIndexer] - No accepted document for Sanguisorba minor 3029430 -> 7220805
+2019-11-14 19:57:58,291 WARN : [DwcaNameIndexer] - No accepted document for Castilleja septentrionalis 3170627 -> 3170629
+2019-11-14 19:57:58,303 WARN : [DwcaNameIndexer] - No accepted document for Athyrium filix-femina michauxii 5643827 -> 5644779
+2019-11-14 19:57:58,306 WARN : [DwcaNameIndexer] - No accepted document for Antennaria canadensis 6064883 -> 5702295
+2019-11-14 19:57:58,315 WARN : [DwcaNameIndexer] - No accepted document for Osmunda claytoniana 2651329 -> 9819539
+2019-11-14 19:57:58,316 WARN : [DwcaNameIndexer] - No accepted document for Antennaria petaloidea 6064830 -> 5702284
+2019-11-14 19:57:58,329 WARN : [DwcaNameIndexer] - No accepted document for Pteridium aquilinum latiusculum 7601986 -> 7265890
+2019-11-14 19:57:58,341 WARN : [DwcaNameIndexer] - No accepted document for Tachyta inornata 7938115 -> 8791328
+2019-11-14 19:57:58,376 WARN : [DwcaNameIndexer] - No accepted document for Torreyochloa pallida fernaldii 4124319 -> 8063143
+2019-11-14 19:57:58,394 WARN : [DwcaNameIndexer] - No accepted document for Jungermannia cordifolia 4277395 -> 8181901
+2019-11-14 19:57:58,400 WARN : [DwcaNameIndexer] - No accepted document for Fissidens minutulus 5710763 -> 7728626
+2019-11-14 19:57:58,406 WARN : [DwcaNameIndexer] - No accepted document for Athyrium filix-femina angustum 7883729 -> 5644779
+2019-11-14 19:57:58,474 WARN : [DwcaNameIndexer] - No accepted document for Ranunculus aquatilis diffusus 3033388 -> 10096320
+2019-11-14 19:57:58,478 WARN : [DwcaNameIndexer] - No accepted document for Gallinula galeata cachinnans 6085705 -> 5228200
+2019-11-14 19:57:58,492 WARN : [DwcaNameIndexer] - No accepted document for Acalypha rhomboidea 3056384 -> 3056383
+2019-11-14 19:57:58,533 WARN : [DwcaNameIndexer] - No accepted document for Brachyelytrum aristatum 4131385 -> 2706403
+2019-11-14 19:57:58,540 WARN : [DwcaNameIndexer] - No accepted document for Prunus insititia 3022289 -> 7409013
+2019-11-14 19:57:58,549 WARN : [DwcaNameIndexer] - No accepted document for Crataegus pruinosa dissona 3014019 -> 8108263
+2019-11-14 19:57:58,559 WARN : [DwcaNameIndexer] - No accepted document for Melanitta americana 2498250 -> 6178415
+2019-11-14 19:57:58,564 WARN : [DwcaNameIndexer] - No accepted document for Discostella stelligera 8152343 -> 7884571
+2019-11-14 19:57:58,571 WARN : [DwcaNameIndexer] - No accepted document for Ranunculus trichophyllus calvescens 3922610 -> 6449698
+2019-11-14 19:57:58,596 WARN : [DwcaNameIndexer] - No accepted document for Oxypolis rigidior 3034755 -> 6307761
+2019-11-14 19:57:58,620 WARN : [DwcaNameIndexer] - No accepted document for Canis familiaris 5219200 -> 6164210
+2019-11-14 19:57:58,629 WARN : [DwcaNameIndexer] - No accepted document for Amelanchier sanguinea 3023840 -> 7272344
+2019-11-14 19:57:58,657 WARN : [DwcaNameIndexer] - No accepted document for Solidago glutinosa randii 5705190 -> 5704380
+2019-11-14 19:57:58,676 WARN : [DwcaNameIndexer] - No accepted document for Kochia scoparia 8904738 -> 7219488
+2019-11-14 19:57:58,705 WARN : [DwcaNameIndexer] - No accepted document for Polygonum aviculare depressum 5652190 -> 7291659
+2019-11-14 19:57:58,728 WARN : [DwcaNameIndexer] - No accepted document for Oncophorus polycarpus 5710539 -> 7800837
+2019-11-14 19:57:58,742 WARN : [DwcaNameIndexer] - No accepted document for Jubula pennsylvanica pennsylvanica 5710117 -> 9468107
+2019-11-14 19:57:58,760 WARN : [DwcaNameIndexer] - No accepted document for Hieracium piloselloides Vill. 3135608 -> 6083825
+2019-11-14 19:57:58,785 WARN : [DwcaNameIndexer] - No accepted document for Phacopsis oxyspora oxyspora 5473306 -> 9719299
+2019-11-14 19:57:58,786 WARN : [DwcaNameIndexer] - No accepted document for Athyrium filix-femina angustum 5643878 -> 5644779
+2019-11-14 19:57:58,789 WARN : [DwcaNameIndexer] - No accepted document for Ramalina intermedia 2608134 -> 2607581
+2019-11-14 19:57:58,792 WARN : [DwcaNameIndexer] - No accepted document for Ranunculus aquatilis trichophyllus 3926277 -> 10096320
+2019-11-14 19:57:58,795 WARN : [DwcaNameIndexer] - No accepted document for Felis concolor couguar 6164598 -> 6164590
+2019-11-14 19:57:58,796 WARN : [DwcaNameIndexer] - No accepted document for Viola arenaria 5663517 -> 7296243
+2019-11-14 19:57:58,802 WARN : [DwcaNameIndexer] - No accepted document for Athyrium filix-femina elatius 5643850 -> 8086472

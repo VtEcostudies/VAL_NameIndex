@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<eml:eml xmlns:eml="eml://ecoinformatics.org/eml-2.1.1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="eml://ecoinformatics.org/eml-2.1.1 http://rs.gbif.org/schema/eml-gbif-profile/1.1/eml.xsd"
+        packageId=""  system="http://gbif.org" scope="system"
+  xml:lang="en">
+
+<dataset>
+    <title>Species List for the State of Vermont</title>
+    <creator>
+		<individualName>
+			<givenName>Kent</givenName>
+			<surName>McFarland</surName>
+		</individualName>
+		<organizationName>Vermont Center for Ecostudies</organizationName>
+		<address>
+		<deliveryPoint>20 Palmer Court 2nd Floor</deliveryPoint>
+		<city>White River Junction</city>
+		<administrativeArea>Vermont</administrativeArea>
+		<postalCode>05001</postalCode>
+		<country>UNITED_STATES</country>
+		</address>
+		<electronicMailAddress>kmcfarland@vtecostudies.org</electronicMailAddress>    
+	</creator>
+    <metadataProvider>
+		<individualName>
+			<givenName>Kent</givenName>
+			<surName>McFarland</surName>
+		</individualName>
+		<organizationName>Vermont Center for Ecostudies</organizationName>
+		<electronicMailAddress>kmcfarland@vtecostudies.org</electronicMailAddress>    
+	</metadataProvider>
+      <pubDate>
+      2019-11-06
+      </pubDate>
+    <language>en</language>
+    <abstract>
+        <para>
+		A checklist of all species known to exist in Vermont, USA. Also known as the Vermont Life List.
+		</para>
+    </abstract>
+      <distribution scope="document">
+          <online>
+              <url function="information">https://vtecostudies.org</url>
+          </online>
+      </distribution>
+
+</dataset>
+
+</eml:eml>

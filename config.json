@@ -1,0 +1,11 @@
+{
+    "secret": "Very long string here",
+
+	"pg": {
+		"user": "val",
+		"host": "localhost",
+		"database": "val_species",
+		"password": "EatArugula",
+		"port": 5433
+	}
+}
