@@ -1,6 +1,6 @@
   Author: Jason Loomis
 
-  Project: VAL_Species
+  # Project: VAL_Species
 
   Parse GBIF species occurrence download DwCA into a VAL species list DwCA that 
   can be used by the VAL ALA nameindexer. This processed output will also serve
