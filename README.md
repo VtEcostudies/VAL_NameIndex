@@ -17,22 +17,22 @@
   Specifics:
 
   index GBIF name              index	ALA name
-  1  taxonKey                  1	taxonID
-  2  scientificName            2	scientificName
-  3  acceptedTaxonKey          3	acceptedNameUsageID
-  4  acceptedScientificName    4	acceptedNameUsage
-  5  taxonRank                 5	taxonRank
-  6  taxonomicStatus           6	taxonomicStatus
-  8  kingdomKey	               7	parentNameUsageID
-  10 phylumKey                 8	nomenclaturalCode
-  12 classKey                  9	scientificNameAuthorship
-  14 orderKey                  10	specificEpithet
-  16 familyKey                 11	infraspecificEpithet
-  18 genusKey                  12	taxonRemarks
-  20 speciesKey
+  1.  taxonKey                  1.	taxonID
+  2.  scientificName            2.	scientificName
+  3.  acceptedTaxonKey          3.	acceptedNameUsageID
+  4.  acceptedScientificName    4.	acceptedNameUsage
+  5.  taxonRank                 5.	taxonRank
+  6.  taxonomicStatus           6.	taxonomicStatus
+  8.  kingdomKey	            7.	parentNameUsageID
+  10. phylumKey                 8.	nomenclaturalCode
+  12. classKey                  9.	scientificNameAuthorship
+  14. orderKey                  10.	specificEpithet
+  16. familyKey                 11.	infraspecificEpithet
+  18. genusKey                  12.	taxonRemarks
+  20. speciesKey
                               ...also add these for future checklists:
-                              13  datasetName
-                              14  datasetID
+                              13.  datasetName
+                              14.  datasetID
 
   - Conversions for index values 1-6 are 1:1.
 
@@ -59,8 +59,8 @@
   In the previous step, created by the file 01_convert_gbif_to_val.js, we created
   2 files:
 
-  1) val_species.txt
-  2) val_species_mistmatch.txt
+  1. val_species.txt
+  2. val_species_mistmatch.txt
 
   File (2) is all rows in val_species.txt where taxonId != acceptedNameUsageID. That mismatch
   is not itself a problem. However, a sub-set of those values refer to an acceptedNameUsageID
@@ -74,11 +74,11 @@
 
   The solution:
 
-  1) Load val_species.txt into postgres table val_species
-  2) Load val_mismatch.txt into postgres table val_mismatch
-  3) Query RIGHT JOIN on val_mismatch.acceptedNameUsageID NOT in
+  1. Load val_species.txt into postgres table val_species
+  2. Load val_mismatch.txt into postgres table val_mismatch
+  3. Query RIGHT JOIN on val_mismatch.acceptedNameUsageID NOT in
   val_species.taxonId and output to file. => 1357 results
-  4) Iterate over acceptedNameUsageIDs in result set, hit GBIF API for those
+  4. Iterate over acceptedNameUsageIDs in result set, hit GBIF API for those
   taxonIds, add them to our original val_species.txt.
 
   File: 03_post_process_val_species_for_nameindexer.js
@@ -101,26 +101,26 @@
   Specifics:
 
   index GBIF name
-  1  taxonKey
-  2  scientificName
-  3  acceptedTaxonKey
-  4  acceptedScientificName
-  5  taxonRank
-  6  taxonomicStatus
-  7  kingdom
-	8  kingdomKey
-  9  phylum
-	10 phylumKey
-  11 class
-	12 classKey
-  13 order
-  14 orderKey
-  15 family
-  16 familyKey
-  17 genus
-  18 genusKey
-  19 species
-  20 speciesKey
+  1.  taxonKey
+  2.  scientificName
+  3.  acceptedTaxonKey
+  4.  acceptedScientificName
+  5.  taxonRank
+  6.  taxonomicStatus
+  7.  kingdom
+  8.  kingdomKey
+  9.  phylum
+  10. phylumKey
+  11. class
+  12. classKey
+  13. order
+  14. orderKey
+  15. family
+  16. familyKey
+  17. genus
+  18. genusKey
+  19. species
+  20. speciesKey
 
   - The database ingests all columns, but renames them to DwCA-compliant names,
   which are used by VAL.
@@ -149,3 +149,4 @@
 
   Later, in file 06, we query missing primary taxonIds in table val_species which
   are listed in table val_gbif_taxon_id, then add them to the val_species table.
+
