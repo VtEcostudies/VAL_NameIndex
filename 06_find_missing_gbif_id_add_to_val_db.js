@@ -27,7 +27,7 @@ var staticColumns = [];
 console.log(`config paths: ${JSON.stringify(paths)}`);
 
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
-var logFileName = 'insert_missing_taxa_' + moment().format('YYYYMMDD-HH:MM:SS')
+var logFileName = 'insert_missing_taxa_' + moment().format('YYYYMMDD-HHMMSS') + '.txt';
 var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
@@ -48,12 +48,13 @@ getColumns()
                   insCount++;
                   const msg = `insertValTaxon SUCCESS | gbifId:${res.val.taxonId}`;
                   console.log(msg);
-                  write[0].write(`${msg}\n`);
+                  wStream[0].write(`${msg}\n`);
                 })
                 .catch(err => {
                   errCount++;
                   const msg = `insertValTaxon ERROR | gbifId:${err.val.taxonId} | error:${err.message}`;
-                  write[0].write(`${msg}\n`);
+                  console.log(msg);
+                  wStream[0].write(`${msg}\n`);
                 })
             })
             .catch(err => {
@@ -108,11 +109,13 @@ async function insertValTaxon(gbif) {
   //translate gbif api values to val columns
   console.log(`taxonId = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`);
   var val = {};
-  var speciessub = [];
+
   if (gbif.canonicalName) {
-    speciessub = gbif.canonicalName.split(" ").slice(); //break into tokens by spaces
-    val.specificEpithet=gbif.rank=='SPECIES'?speciessub[1]:'';
-    val.infraspecificEpithet=gbif.rank=='SUBSPECIES'?speciessub[2]:'';
+    var rank = gbif.rank?gbif.rank.toLowerCase():undefined;
+    var speciessub = gbif.canonicalName.split(" ").slice(); //break into tokens by spaces
+    val.specificEpithet=rank=='species'?speciessub[1]:null;
+    val.infraspecificEpithet=rank=='subspecies'?speciessub[2]:null;
+    val.infraspecificEpithet=rank=='variety'?speciessub[2]:val.infraspecificEpithet; //don't overwrite previous on false...
   }
 
   val.gbifId=gbif.key;
@@ -125,8 +128,8 @@ async function insertValTaxon(gbif) {
   val.parentNameUsageId=gbif.parentKey || 0;
   val.nomenclaturalCode='GBIF';
   val.scientificNameAuthorship=gbif.authorship;
-  val.vernacularName=gbif.vernacularName?gbif.vernacularName:'';
-  val.taxonRemarks=gbif.remarks;
+  val.vernacularName=gbif.vernacularName?gbif.vernacularName:null;
+  val.taxonRemarks=gbif.remarks?gbif.remarks:null;
   val.kingdom=gbif.kingdom?gbif.kingdom:null;
   val.kingdomId=gbif.kingdomKey?gbif.kingdomKey:null;;
   val.phylum=gbif.phylum?gbif.phylum:null;
@@ -147,6 +150,8 @@ async function insertValTaxon(gbif) {
   return new Promise((resolve, reject) => {
     query(text, queryColumns.values)
       .then(res => {
+        res.gbif = gbif;
+        res.val = val;
         resolve(res);
       })
       .catch(err => {

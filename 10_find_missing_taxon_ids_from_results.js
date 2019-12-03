@@ -3,7 +3,7 @@
 
   Project: VAL_Species
 
-  File: 09_load_taxon_ids_from_file.js
+  File: 10_find_missing_taxon_ids_from_results.js
 
   Purpose: Fill-in higher-order taxon data in val_speces db.
 
@@ -11,18 +11,18 @@
 
   Populate the val_gbif_taxon_id table with taxonIds from a local file.
 
-  Prior to running this, truncate val_gbif_taxon_id.
+  Before inserting, this truncates val_gbif_taxon_id.
 
   After running this, run 06 file to GET and INSERT missing data.
 
 */
 
-const logHand = require('why-is-node-running');
-const readline = require('readline');
-const fs = require('fs');
+//const readline = require('readline');
+//const fs = require('fs');
 const Request = require("request");
 const paths = require('./00_config').paths;
 const query = require('./database/db_postgres').query;
+const csvFileTo2DArray = require('./99_parse_csv_to_array').csvFileTo2DArray;
 
 console.log(`config paths: ${JSON.stringify(paths)}`);
 
@@ -47,50 +47,64 @@ var subDir = 'dwca-checklist-crickets_katydids-vt-v1.4/'; // - INCLUDING TRAILIN
 subDir = 'dwca-checklist_vermont_mammals-v1.2/';
 subDir = baseName + '/';
 var baseFileName = baseName + '.csv'; //'taxon.txt';
-var inputFileName = 'missing_taxonIds_' + baseFileName;
+var inputFileName = 'val_' + baseFileName;
 var outputFileName = 'inserted_taxonIds_' + baseFileName;
-
-var idx = 0; //read file row index
 var taxonIdObj = {}; //an object with keys for all taxonIds referenced here
 
-var fRead = readline.createInterface({
-  input: fs.createReadStream(`${dataDir}${subDir}${inputFileName}`)
-});
+async function getResults() {
+  return await csvFileTo2DArray(dataDir+subDir+inputFileName);
+}
 
-//read missing taxonId file and add to local object
-fRead.on('line', function (row) {
-  console.log(idx, row);
-  taxonIdObj[row] = 1;
-  idx++;
-});
-
-fRead.on('close', async function() {
-  var i = 0;
-  console.log('Read file closed.');
-  //Iterate over missing taxonIds and attempt to insert them into the table
-  //val_gbif_taxon_id. Later, a query is used to reconcile taxonIds in that
-  //table that are missing from val_species.
-  truncateTableValGbifTaxonId()
-    .then(() => {
-    for (var key in taxonIdObj) {
-      insertValGbifTaxonId(i++, key).catch(err => {});
+getResults().then(async (res) => {
+  for (var i=0; i<res.rows.length; i++) {
+    await buildTaxonIdArr(i, res.rows[i]); //this fucking works.
+  }
+  //console.dir(taxonIdObj);
+  truncateTableValGbifTaxonId().then(async () => {
+    for (const id in taxonIdObj) {
+      //console.log(id);
+      insertValGbifTaxonId(id)
+        .then((res) => {}).catch((err) => {});
     }
-  })
-  .catch((err) => {});
+  }).catch((err) => {});
+}).catch((err) => {console.log('getResults ERROR', err.message);});
 
-  setTimeout(function () {logHand();}, 1000) //attempt to find why process hangs
+/*
+Process one row of the incoming file. Extract all taxonId keys listed and add
+them to a local object that lists all higher-order keys or other refernced
+taxonIds.
 
-});
+Create a complete list of gbif taxonIds NOT in the incoming dataset that fill
+out the higher order taxonomic tree for those incoming data.
+*/
+function buildTaxonIdArr(idx, val) {
+  console.log(`${idx} | buildTaxonIdArr | gbifId:${val.taxonId}`);
+  try {
+    if (val.taxonId != val.acceptedNameUsageID) {
+      taxonIdObj[val.acceptedNameUsageId] = 1;}
+    taxonIdObj[val.kingdomId] = 1;
+    taxonIdObj[val.phylumId] = 1;
+    taxonIdObj[val.classId] = 1;
+    taxonIdObj[val.orderId] = 1;
+    taxonIdObj[val.familyId] = 1;
+    taxonIdObj[val.genusId] = 1;
+    if (val.taxonId != val.speciesId) {
+      taxonIdObj[val.speciesId] = 1;}
+  } catch (err) {
+    log(`buildTaxonIdArr | ERROR:${err}`);
+  }
+}
 
-async function insertValGbifTaxonId(idx, val) {
-  var vals = [val];
+async function insertValGbifTaxonId(taxonId) {
+  var vals = [taxonId]; //has to be an array for node-pg
   const text = `insert into val_gbif_taxon_id ("gbifId") values ($1)`;
   return new Promise(async (resolve, reject) => {
     try {
       var res = await query(text, vals);
+      console.log('INSERTED', taxonId, 'into val_gbif_taxon_id.');
       resolve(res);
     } catch (err) {
-      console.log(idx, 'insertValGbifTaxonId', err.message, err.detail);
+      console.log('insertValGbifTaxonId', err.message, err.detail);
       reject(err);
     }
   });
@@ -101,6 +115,7 @@ async function truncateTableValGbifTaxonId() {
   return new Promise(async (resolve, reject) => {
     try {
       var res = await query(text);
+      console.log('truncateTableValGbifTaxonId SUCCESS');
       resolve(res);
     } catch (err) {
       console.log('truncateTableValGbifTaxonId ERROR', err.message, err.detail);

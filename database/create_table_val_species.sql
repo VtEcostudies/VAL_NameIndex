@@ -36,6 +36,7 @@ CREATE TABLE val_species
 "references" VARCHAR,
 "institutionCode" VARCHAR,
 "collectionCode" VARCHAR,
+"establishmentMeans" VARCHAR,
 "createdAt" timestamp without time zone DEFAULT now(),
 "updatedAt" timestamp without time zone DEFAULT now(),
 UNIQUE ("taxonId", "acceptedNameUsageId")--12,292 initial import

@@ -4,6 +4,7 @@ alter table val_species add column "updatedAt" timestamp without time zone DEFAU
 alter table val_species add column "references" varchar;
 alter table val_species add column "institutionCode" varchar;
 alter table val_species add column "collectionCode" varchar;
+alter table val_species add column "establishmentMeans" varchar;
 --create generic trigger function to set "updatedAt"=now() for each table having that column
 CREATE OR REPLACE FUNCTION set_updated_at()
     RETURNS trigger

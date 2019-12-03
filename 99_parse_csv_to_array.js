@@ -50,6 +50,7 @@ async function csvFileTo2DArray(file, delim=',', headRow=true, filterAscii=false
 
   } catch (err) {
     console.error(err);
+    //throw err; //?
   }
 };
 
@@ -59,9 +60,13 @@ function csvTextTo2DArray(text, delim=',', filterAscii=false) {
         if ('"' === l) {
             if (s && l === p) row[i] += l;
             s = !s;
-        } else if (delim === l && s) l = row[++i] = '';
-        else if ('\n' === l && s) {
+        } else if (delim === l && s) {
+          row[i] = row[i].replace(/\s+/g, " "); //replace whitespce with actual space
+          if (filterAscii) row[i] = row[i].replace(/[^ -~]+/g, ""); //filter ASCII
+          l = row[++i] = '';
+        } else if ('\n' === l && s) {
             if ('\r' === p) row[i] = row[i].slice(0, -1);
+            row[i] = row[i].replace(/\s+/g, " "); //replace whitespce with actual space
             if (filterAscii) row[i] = row[i].replace(/[^ -~]+/g, ""); //filter ASCII
             row[i] = row[i].trim();
             row = ret[++r] = [l = '']; i = 0;
@@ -78,10 +83,12 @@ function csvLineTo1DArray(text, delim=',', filterAscii=false) {
             if (s && l === p) row[i] += l;
             s = !s;
         } else if (delim === l && s) {
+            row[i] = row[i].replace(/\s+/g, " "); //replace whitespce with actual space
             if (filterAscii) row[i] = row[i].replace(/[^ -~]+/g, ""); //filter ASCII
             row[i] = row[i].trim();
             l = row[++i] = '';
         } else if ('\n' === l && s) {
+            row[i] = row[i].replace(/\s+/g, " "); //replace whitespce with actual space
             if (filterAscii) row[i] = row[i].replace(/[^ -~]+/g, ""); //filter ASCII
             row[i] = row[i].trim();
             break; //exit loop at line-ending char
