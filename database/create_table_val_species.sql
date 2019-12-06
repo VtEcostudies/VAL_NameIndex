@@ -39,9 +39,10 @@ CREATE TABLE val_species
 "establishmentMeans" VARCHAR,
 "createdAt" timestamp without time zone DEFAULT now(),
 "updatedAt" timestamp without time zone DEFAULT now(),
-UNIQUE ("taxonId", "acceptedNameUsageId")--12,292 initial import
+UNIQUE ("taxonId"),
+PRIMARY KEY ("taxonId")
+--UNIQUE ("taxonId", "acceptedNameUsageId")--12,292 initial import
 --UNIQUE ("taxonId", "acceptedNameUsageId", "parentNameUsageId", "specificEpithet", "infraspecificEpithet")--18,978 initial import
---PRIMARY KEY ("taxonId"), --by definition UNIQUE, so we can't use this?
 --CONSTRAINT fk_accept_taxon_id FOREIGN KEY ("acceptedNameUsageId") REFERENCES val_species ("taxonId"),
 --CONSTRAINT fk_parent_taxon_id FOREIGN KEY ("parentNameUsageId") REFERENCES val_species ("taxonId")
 );

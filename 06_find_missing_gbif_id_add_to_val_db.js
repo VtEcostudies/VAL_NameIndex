@@ -9,8 +9,19 @@
 
   Specifics:
 
-  Query missing primary taxonIds in table val_species vs those listed
-  in table val_gbif_taxon_id. Add missing taxa to the val_species table.
+  Query missing primary taxonIds in table val_species by querying all secondary
+  and tertiary taxonIds in the database. Add missing taxa to the val_species table.
+
+  The query find missing primary taxonIds for:
+
+  kingdomId
+  phylumId
+  classId
+  orderId
+  familyId
+  genusId
+  speciesId
+  acceptedNameUsageId
 
   Query the GBIF species API for complete record data for each missing taxonId.
 */
@@ -41,12 +52,12 @@ getColumns()
         console.log(res.rowCount, 'missing gbif Ids.', 'First row:', res.rows[0]);
         for (var i=0; i<res.rowCount; i++) {
           wStream[0] = fs.createWriteStream(`${dataDir}/${logFileName}`, {flags: 'w'});
-          getGbifSpecies(res.rows[i].gbifId)
+          getGbifSpecies(res.rows[i].taxonId) //use taxonId - only column returned from SELECT query
             .then(res => {
               insertValTaxon(res)
                 .then(res => {
                   insCount++;
-                  const msg = `insertValTaxon SUCCESS | gbifId:${res.val.taxonId}`;
+                  const msg = `insertValTaxon SUCCESS | taxonId:${res.val.taxonId}`;
                   console.log(msg);
                   wStream[0].write(`${msg}\n`);
                 })
@@ -58,16 +69,16 @@ getColumns()
                 })
             })
             .catch(err => {
-              console.log('getGbifSpecies ERROR |', err);
+              console.log('getGbifSpecies ERROR |', err.message);
             })
         }
       })
       .catch(err => {
-        console.log('getValMissing ERROR |', err);
+        console.log('getValMissing ERROR |', err.message);
       });
   })
   .catch(err => {
-    console.log('getColumns ERROR |', err);
+    console.log('getColumns ERROR |', err.message);
   })
 
 function getColumns() {
@@ -75,12 +86,74 @@ function getColumns() {
   return pgUtil.getColumns("val_species", staticColumns);
 }
 
+/*
+NOTE: taxonId and acceptedNameUsageId are text, while gbifId is integer.
+*/
 async function getValMissing() {
-  const text = `select vg."gbifId"
-                from val_species vs
-                right join val_gbif_taxon_id vg
-                on vs."gbifId" = vg."gbifId"
-                where vs."gbifId" is null;`;
+  var text = '';
+  text = `select vg."taxonId"
+          from val_species vs
+          right join val_gbif_taxon_id vg
+          on vs."gbifId" = vg."gbifId"
+          where vs."gbifId" is null;`;
+
+  text = `--retrieve a list of acceptedNameUsageId which lack a primary definition (no taxonId)
+        select cast(va."acceptedNameUsageId" as int8) as "taxonId"
+        from val_species vs
+        right join val_species va
+        on vs."taxonId" = va."acceptedNameUsageId"
+        where vs."taxonId" is null
+        union
+        --retrieve a list of kingdomId which lack a primary definition (no taxonId)
+        select b."kingdomId" as "taxonId"
+        from val_species a
+        right join val_species b
+        on a."gbifId" = b."kingdomId"
+        where a."gbifId" is null and b."kingdomId" is not null
+        union
+        --retrieve a list of phylumId which lack a primary definition (no taxonId)
+        select b."phylumId" as "taxonId"
+        from val_species a
+        right join val_species b
+        on a."gbifId" = b."phylumId"
+        where a."gbifId" is null and b."phylumId" is not null
+        union
+        --retrieve a list of classId which lack a primary definition (no taxonId)
+        select b."classId" as "taxonId"
+        from val_species a
+        right join val_species b
+        on a."gbifId" = b."classId"
+        where a."gbifId" is null and b."classId" is not null
+        union
+        --retrieve a list of orderId which lack a primary definition (no taxonId)
+        select b."orderId" as "taxonId"
+        from val_species a
+        right join val_species b
+        on a."gbifId" = b."orderId"
+        where a."gbifId" is null and b."orderId" is not null
+        union
+        --retrieve a list of familyId which lack a primary definition (no taxonId)
+        select b."familyId" as "taxonId"
+        from val_species a
+        right join val_species b
+        on a."gbifId" = b."familyId"
+        where a."gbifId" is null and b."familyId" is not null
+        union
+        --retrieve a list of genusId which lack a primary definition (no taxonId)
+        select b."genusId" as "taxonId"
+        from val_species a
+        right join val_species b
+        on a."gbifId" = b."genusId"
+        where a."gbifId" is null and b."genusId" is not null
+        union
+        --retrieve a list of speciesId which lack a primary definition (no taxonId)
+        select b."speciesId" as "taxonId"
+        from val_species a
+        right join val_species b
+        on a."gbifId" = b."speciesId"
+        where a."gbifId" is null and b."speciesId" is not null
+  `;
+
   return await query(text);
 }
 
@@ -94,9 +167,6 @@ function getGbifSpecies(key) {
     Request.get(parms, (err, res, body) => {
       if (err) {
         reject(err);
-      } else if (res.statusCode > 299) {
-        console.log(`getGbifSpecies(${key}) | ${res.statusCode}`);
-        reject(res);
       } else {
         console.log(`getGbifSpecies(${key}) | ${res.statusCode}`);
         resolve(body);

@@ -66,6 +66,7 @@ var baseName = '';
 //baseName = 'Fish_Vermont';
 //baseName = 'Freshwater_Mussels_Vermont';
 //baseName = 'Plants_Vermont';
+baseName = 'Syrphids_Vermont';
 
 //var subDir = 'dwca-checklist-crickets_katydids-vt-v1.4/'; // - INCLUDING TRAILING SLASH
 //subDir = 'dwca-checklist_vermont_mammals-v1.2/';
@@ -84,8 +85,8 @@ var errCount = 0; //count record errors
 var errQueue = []; ///array of error records (not used yet - for connection timeouts)
 var wStream = {}; //array of write streams
 
-var dbInsert = 0;
-var dbUpdate = 1;
+var dbInsert = 1;
+var dbUpdate = 0;
 
 var taxonIdObj = {}; //an object with keys for all taxonIds referenced here
 var rowsToSkip = {}; //an object of source rows already processed - read from the processed file
@@ -182,11 +183,9 @@ If a match was made, or a species was found, produce the output.
 */
 function processResults(gbf, src) {
   try {
-    //var val = gbifAcceptedToVal(gbf, gbf.src, gbf.self);
     var val = gbifSelfToVal(gbf, src);
     writeResultToFile(val);
     //writeProcessedToFile(src); //make a file of source rows processed
-    //buildTaxonIdArr(val, gbf.idx);
     if (dbInsert) {
       insertValTaxon(val, gbf.idx)
         .then(ins => {
@@ -603,67 +602,6 @@ function writeProcessedToFile(src) {
     wStream['processed'] = fs.createWriteStream(`${dataDir}${subDir}${processedFileName}`, {flags: 'w', encoding: 'utf8'});
   }
   wStream['processed'].write(`${src}\n`);
-}
-
-/*
-Process one row of the incoming file. Extract all taxonId keys listed and add
-them to a local object that lists all higher-order keys or other refernced
-taxonIds.
-
-Create a complete list of gbif taxonIds NOT in the incoming dataset that fill
-out the higher order taxonomic tree for those incoming data.
-*/
-function buildTaxonIdArr(val, idx) {
-  //console.log('buildTaxonIdArr | ', rowCount, outCount, idx);
-  log(`${idx} | buildTaxonIdArr | gbifId:${val.taxonId} | rowCount:${rowCount} | outCount:${outCount}`);
-  try {
-    if (val.taxonId != val.acceptedNameUsageID) {
-      taxonIdObj[val.acceptedNameUsageId] = 1;}
-    taxonIdObj[val.kingdomId] = 1;
-    taxonIdObj[val.phylumId] = 1;
-    taxonIdObj[val.classId] = 1;
-    taxonIdObj[val.orderId] = 1;
-    taxonIdObj[val.familyId] = 1;
-    taxonIdObj[val.genusId] = 1;
-    if (val.taxonId != val.speciesId) {
-      taxonIdObj[val.speciesId] = 1;}
-  } catch (err) {
-    log(`buildTaxonIdArr | ERROR:${err}`);
-  }
-
-/* moved this to process.on('Exit') event
-  if (outCount >= (rowCount)) { //this is how we detect an end of processing
-    writeTaxonIdFile();
-
-    //attempt to find why process hangs
-    setTimeout(function () {
-      logHand() // logs active handles that are keeping node running
-    }, 1000)
-
-    setTimeout(displayStats, 5000); //delay the call to attempt to display it last...
-  }
-*/
-}
-
-/*
-Iterate over local taxonIdObj and write it to a file in the same location as the
-incoming taxon file.
-
-This file is used later to populate the PostGRES table val_gbif_taxon_id, which
-is the list of all taxonIds referenced anywhere within taxon rows.
-
-Subsequent to that step, 06_find_missing_gbif_id_add_to_val_db.js joins two
-tables to find missing taxon rows in the database, then attempts to get them
-from GBIF and insert them.
-*/
-function writeTaxonIdFile() {
-  if (!wStream['taxonids']) {
-    wStream['taxonids'] = fs.createWriteStream(`${dataDir}${subDir}missing_taxonIds_${inputFileName}`, {flags: 'w', encoding: 'utf8'});
-  }
-
-  for (var key in taxonIdObj) {
-    wStream['taxonids'].write(`${key}\n`);
-  }
 }
 
 function displayStats() {

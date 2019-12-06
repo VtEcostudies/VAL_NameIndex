@@ -5,6 +5,10 @@ alter table val_species add column "references" varchar;
 alter table val_species add column "institutionCode" varchar;
 alter table val_species add column "collectionCode" varchar;
 alter table val_species add column "establishmentMeans" varchar;
+alter table val_species add UNIQUE("taxonId");
+alter table val_species add PRIMARY KEY ("taxonId");
+alter table val_species drop constraint "val_species_taxonId_acceptedNameUsageId_key";
+
 --create generic trigger function to set "updatedAt"=now() for each table having that column
 CREATE OR REPLACE FUNCTION set_updated_at()
     RETURNS trigger
@@ -15,6 +19,7 @@ BEGIN
    RETURN NEW;
 END;
 $BODY$;
+
 --create triggers for each table having the column "updatedAt"
 CREATE TRIGGER trigger_updated_at
     BEFORE UPDATE 
