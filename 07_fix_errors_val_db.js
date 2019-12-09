@@ -28,6 +28,7 @@ var Request = require("request");
 var paths = require('./00_config').paths;
 const query = require('./database/db_postgres').query;
 const pgUtil = require('./database/db_pg_util');
+const gbifToValDirect = require('./98_gbif_to_val_columns').gbifToValDirect;
 var staticColumns = [];
 
 console.log(`config paths: ${JSON.stringify(paths)}`);
@@ -108,43 +109,11 @@ function getGbifSpecies(key) {
 async function updateValTaxon(gbif, fix_id=1) {
   //translate gbif api values to val columns
   console.log(`taxonId = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`);
-  var val = {};
   var qryColumns = [];
   var sql_update = [];
   var speciessub = [];
-  if (gbif.canonicalName) {
-    speciessub = gbif.canonicalName.split(" ").slice(); //break into tokens by spaces
-    val.specificEpithet=gbif.rank.toLowerCase()=='species'?speciessub[1]:'';
-    val.infraspecificEpithet=gbif.rank.toLowerCase()=='subspecies'?speciessub[2]:'';
-    val.infraspecificEpithet=gbif.rank.toLowerCase()=='variety'?speciessub[2]:'';
-  }
 
-  val.gbifId=gbif.key;
-  val.taxonId=gbif.key;
-  val.scientificName=gbif.canonicalName?gbif.canonicalName:gbif.scientificName; //scientificName often contains author. nameindexer cannot handle that, so remove it.
-  val.acceptedNameUsageId=gbif.acceptedKey?gbif.acceptedKey:gbif.key;
-  val.acceptedNameUsage=gbif.accepted?gbif.accepted:gbif.scientificName;
-  val.taxonRank=gbif.rank.toLowerCase();
-  val.taxonomicStatus=gbif.taxonomicStatus.toLowerCase()
-  val.parentNameUsageId=gbif.parentKey || 0;
-  val.nomenclaturalCode='GBIF';
-  val.scientificNameAuthorship=gbif.authorship;
-  val.vernacularName=gbif.vernacularName?gbif.vernacularName:'';
-  val.taxonRemarks=gbif.remarks;
-  val.kingdom=gbif.kingdom?gbif.kingdom:null;
-  val.kingdomId=gbif.kingdomKey?gbif.kingdomKey:null;;
-  val.phylum=gbif.phylum?gbif.phylum:null;
-  val.phylumId=gbif.phylumKey?gbif.phylumKey:null;
-  val.class=gbif.class?gbif.class:null;
-	val.classId=gbif.classKey?gbif.classKey:null;
-  val.order=gbif.order?gbif.order:null;
-  val.orderId=gbif.orderKey?gbif.orderKey:null;
-  val.family=gbif.family?gbif.family:null;
-  val.familyId=gbif.familyKey?gbif.familyKey:null;
-  val.genus=gbif.genus?gbif.genus:null;
-  val.genusId=gbif.genusKey?gbif.genusKey:null;
-  val.species=gbif.species?gbif.species:null;
-  val.speciesId=gbif.speciesKey?gbif.speciesKey:null;
+  var val = gbifToValDirect(gbif);
 
   if (fix_id == 5 || fix_id == 6 || fix_id == 7) { //for genus & species, oddly the opposite occurs: acceptedNameUsage has author. leave that alone, since it doesn't break nameindexer.
     delete val.acceptedNameUsageId;

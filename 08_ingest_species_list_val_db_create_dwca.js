@@ -41,6 +41,7 @@ const paths = require('./00_config').paths;
 const query = require('./database/db_postgres').query;
 const pgUtil = require('./database/db_pg_util');
 const csvFileTo2DArray = require('./99_parse_csv_to_array').csvFileTo2DArray;
+const gbifToValIngest = require('./98_gbif_to_val_columns').gbifToValIngest;
 
 const inputFileDelim = ",";
 const outputFileDelim = ",";
@@ -66,7 +67,8 @@ var baseName = '';
 //baseName = 'Fish_Vermont';
 //baseName = 'Freshwater_Mussels_Vermont';
 //baseName = 'Plants_Vermont';
-baseName = 'Syrphids_Vermont';
+//baseName = 'Syrphids_Vermont';
+baseName = 'Error_Corrections';
 
 //var subDir = 'dwca-checklist-crickets_katydids-vt-v1.4/'; // - INCLUDING TRAILING SLASH
 //subDir = 'dwca-checklist_vermont_mammals-v1.2/';
@@ -85,7 +87,7 @@ var errCount = 0; //count record errors
 var errQueue = []; ///array of error records (not used yet - for connection timeouts)
 var wStream = {}; //array of write streams
 
-var dbInsert = 1;
+var dbInsert = 0;
 var dbUpdate = 0;
 
 var taxonIdObj = {}; //an object with keys for all taxonIds referenced here
@@ -183,7 +185,11 @@ If a match was made, or a species was found, produce the output.
 */
 function processResults(gbf, src) {
   try {
-    var val = gbifSelfToVal(gbf, src);
+
+    log(`gbifToValIngest |
+      gbifId:${gbf.key} | GBIF scientificName:${gbf.scientificName} | GBIF canonicalName:${gbf.canonicalName} | GBIF rank:${gbf.rank}`);
+
+    var val = gbifToValIngest(gbf, src);
     writeResultToFile(val);
     //writeProcessedToFile(src); //make a file of source rows processed
     if (dbInsert) {
@@ -360,97 +366,6 @@ function getGbifSpecies(gbf, src, idx) {
   });
 }
 
-/*
-Translate GBIF taxon data to VAL taxon data for insert/update into database and
-output to file.
-
-The format of the incoming data should conform to the output of the GBIF species
-API, not the matching API.
-
-inputs:
-
-gbif - object returned from GBIF species query - best match available
-src - object from source input row
-
-outputs:
-
-We should never return a scientificName with author included (use authorship for that) because the ala
-nameindexer can't handle it.
-*/
-function gbifSelfToVal(gbif, src) {
-  var val = {};
-  if (src.id) {val.id=src.id;} //spit this back out for incoming DwCA that use it to map val_taxon.txt to other incoming dwca extensions
-
-  //species API returns key. fuzzy match API returns usageKey. we try to handle both.
-  gbif.key=gbif.key?gbif.key:gbif.usageKey;
-
-  //src.canonicalName = parseCanonicalName(src.scientificName, src.taxonRank?src.taxonRank.trim():undefined);
-
-  log(`gbifSelfToVal |
-    gbifId:${gbif.key} |
-    GBIF scientificName:${gbif.scientificName} |
-    GBIF canonicalName:${gbif.canonicalName} |
-    GBIF rank:${gbif.rank}
-      `);
-
-  val.gbifId=gbif.key;
-  val.taxonId=gbif.key;
-  val.scientificName=gbif.canonicalName?gbif.canonicalName:src.canonicalName; //scientificName often contains author. nameindexer cannot handle that, so remove it.
-  val.acceptedNameUsageId=gbif.acceptedKey?gbif.acceptedKey:gbif.key;
-  val.acceptedNameUsage=gbif.accepted?gbif.accepted:gbif.scientificName;
-  val.taxonRank=gbif.rank?gbif.rank.toLowerCase():null;
-  val.parentNameUsageId=gbif.parentKey || getParentKeyFromTreeKeys(gbif);
-
-  if (gbif.authorship) {
-    val.scientificNameAuthorship = gbif.authorship;
-  } else if (gbif.canonicalName) {
-    var authorsub = gbif.scientificName.split(gbif.canonicalName);
-    val.scientificNameAuthorship = authorsub[1]?authorsub[1].trim():null;
-    console.log('Split Author from GBIF scientificName:', val.scientificNameAuthorship);
-  }
-
-  if (gbif.canonicalName) {
-    var rank = gbif.rank?gbif.rank.toLowerCase():undefined;
-    var speciessub = gbif.canonicalName.split(" ").slice(); //break into tokens by spaces
-    val.specificEpithet=rank=='species'?speciessub[1]:null;
-    val.infraspecificEpithet=rank=='subspecies'?speciessub[2]:null;
-    val.infraspecificEpithet=rank=='variety'?speciessub[2]:val.infraspecificEpithet; //don't overwrite previous on false...
-  }
-
-  val.nomenclaturalCode='GBIF';
-  val.scientificNameAuthorship=val.scientificNameAuthorship?val.scientificNameAuthorship:null;
-  val.vernacularName=gbif.vernacularName?gbif.vernacularName:null;
-  val.vernacularName=val.vernacularName?val.vernacularName+', ':null+src.vernacularName?src.vernacularName:null;
-  val.vernacularName=src.vernacularName;
-  src.taxonRemarks=src.taxonRemarks?src.taxonRemarks.trim():null;
-  val.taxonRemarks=gbif.remarks?'gbif:'+gbif.remarks:null+src.taxonRemarks?'val:'+src.taxonRemarks:null;
-  val.taxonomicStatus=gbif.taxonomicStatus?gbif.taxonomicStatus.toLowerCase():null;
-  val.kingdom=gbif.kingdom?gbif.kingdom:null;
-  val.kingdomId=gbif.kingdomKey?gbif.kingdomKey:null;;
-  val.phylum=gbif.phylum?gbif.phylum:null;
-  val.phylumId=gbif.phylumKey?gbif.phylumKey:null;
-  val.class=gbif.class?gbif.class:null;
-	val.classId=gbif.classKey?gbif.classKey:null;
-  val.order=gbif.order?gbif.order:null;
-  val.orderId=gbif.orderKey?gbif.orderKey:null;
-  val.family=gbif.family?gbif.family:null;
-  val.familyId=gbif.familyKey?gbif.familyKey:null;
-  val.genus=gbif.genus?gbif.genus:null;
-  val.genusId=gbif.genusKey?gbif.genusKey:null;
-  val.species=gbif.species?gbif.species:null;
-  val.speciesId=gbif.speciesKey?gbif.speciesKey:null;
-
-  //append items specific to our species index
-  val.datasetName=src.datasetName || null;
-  val.datasetId=src.datasetId || null;
-  val.bibliographicCitation=src.bibliographicCitation || null;
-  val.references=src.references || null;
-  val.institutionCode=src.institutionCode || null;
-  val.collectionCode=src.collectionCode || null;
-  val.establishmentMeans=src.establishmentMeans || null;
-
-  return val;
-}
 
 /*
 Attempt to parse canonicalName from incoming name. If we don't have rank, this is
@@ -481,25 +396,6 @@ function parseCanonicalName(name, rank=undefined) {
   log(`parseCanonicalName | rank:${rank} | result:${canon}`);
 
   return canon.trim();
-}
-
-function getParentKeyFromTreeKeys(gbif) {
-  var parentId = 0;
-
-  //parentNameUsageID is key of next higher rank (except for kingdom, which is itself)
-  switch(gbif.rank.toLowerCase()) {
-    case 'kingdom': parentId = gbif.kingdomKey; break;
-    case 'phylum': parentId = gbif.kingdomKey; break;
-    case 'class': parentId = gbif.phylumKey; break;
-    case 'order': parentId = gbif.classKey; break;
-    case 'family': parentId = gbif.orderKey; break;
-    case 'genus': parentId = gbif.familyKey; break;
-    case 'species': parentId = gbif.genusKey; break;
-    case 'subspecies': parentId = gbif.speciesKey; break;
-    case 'variety': parentId = gbif.speciesKey; break;
-  }
-
-  return parentId;
 }
 
 /*

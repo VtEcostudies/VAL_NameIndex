@@ -21,7 +21,7 @@
   familyId
   genusId
   speciesId
-  acceptedNameUsageId
+  acceptedNameUsage
 
   Query the GBIF species API for complete record data for each missing taxonId.
 */
@@ -33,6 +33,7 @@ var moment = require('moment');
 var paths = require('./00_config').paths;
 const query = require('./database/db_postgres').query;
 const pgUtil = require('./database/db_pg_util');
+const gbifToValDirect = require('./98_gbif_to_val_columns').gbifToValDirect;
 var staticColumns = [];
 
 console.log(`config paths: ${JSON.stringify(paths)}`);
@@ -178,42 +179,8 @@ function getGbifSpecies(key) {
 async function insertValTaxon(gbif) {
   //translate gbif api values to val columns
   console.log(`taxonId = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`);
-  var val = {};
 
-  if (gbif.canonicalName) {
-    var rank = gbif.rank?gbif.rank.toLowerCase():undefined;
-    var speciessub = gbif.canonicalName.split(" ").slice(); //break into tokens by spaces
-    val.specificEpithet=rank=='species'?speciessub[1]:null;
-    val.infraspecificEpithet=rank=='subspecies'?speciessub[2]:null;
-    val.infraspecificEpithet=rank=='variety'?speciessub[2]:val.infraspecificEpithet; //don't overwrite previous on false...
-  }
-
-  val.gbifId=gbif.key;
-  val.taxonId=gbif.key;
-  val.scientificName=gbif.canonicalName?gbif.canonicalName:gbif.scientificName; //scientificName often contains author. nameindexer cannot handle that, so remove it.
-  val.acceptedNameUsageId=gbif.acceptedKey?gbif.acceptedKey:gbif.key;
-  val.acceptedNameUsage=gbif.accepted?gbif.accepted:gbif.scientificName;
-  val.taxonRank=gbif.rank.toLowerCase();
-  val.taxonomicStatus=gbif.taxonomicStatus.toLowerCase()
-  val.parentNameUsageId=gbif.parentKey || 0;
-  val.nomenclaturalCode='GBIF';
-  val.scientificNameAuthorship=gbif.authorship;
-  val.vernacularName=gbif.vernacularName?gbif.vernacularName:null;
-  val.taxonRemarks=gbif.remarks?gbif.remarks:null;
-  val.kingdom=gbif.kingdom?gbif.kingdom:null;
-  val.kingdomId=gbif.kingdomKey?gbif.kingdomKey:null;;
-  val.phylum=gbif.phylum?gbif.phylum:null;
-  val.phylumId=gbif.phylumKey?gbif.phylumKey:null;
-  val.class=gbif.class?gbif.class:null;
-	val.classId=gbif.classKey?gbif.classKey:null;
-  val.order=gbif.order?gbif.order:null;
-  val.orderId=gbif.orderKey?gbif.orderKey:null;
-  val.family=gbif.family?gbif.family:null;
-  val.familyId=gbif.familyKey?gbif.familyKey:null;
-  val.genus=gbif.genus?gbif.genus:null;
-  val.genusId=gbif.genusKey?gbif.genusKey:null;
-  val.species=gbif.species?gbif.species:null;
-  val.speciesId=gbif.speciesKey?gbif.speciesKey:null;
+  var val = gbifToValDirect(gbif);
 
   var queryColumns = pgUtil.parseColumns(val, 1, [], staticColumns);
   const text = `insert into val_species (${queryColumns.named}) values (${queryColumns.numbered}) returning "taxonId"`;
