@@ -27,7 +27,7 @@ async function getColumns(tableName, columns=[]) {
             res.fields.forEach(fld => {
                 columns.push(String(fld.name));
             });
-            //console.log(`${tableName} columns:`, columns);
+            console.log(`${tableName} columns:`, columns);
             return {tableName: columns};
         })
         .catch(err => {

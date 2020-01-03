@@ -46,13 +46,14 @@ var errCount = 0;
 
 console.log('output file name', logFileName);
 
+wStream[0] = fs.createWriteStream(`${dataDir}/${logFileName}`, {flags: 'w'});
+
 getColumns()
   .then(res => {
     getValMissing()
       .then(res => {
         console.log(res.rowCount, 'missing gbif Ids.', 'First row:', res.rows[0]);
         for (var i=0; i<res.rowCount; i++) {
-          wStream[0] = fs.createWriteStream(`${dataDir}/${logFileName}`, {flags: 'w'});
           getGbifSpecies(res.rows[i].taxonId) //use taxonId - only column returned from SELECT query
             .then(res => {
               insertValTaxon(res)

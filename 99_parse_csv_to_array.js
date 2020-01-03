@@ -9,7 +9,7 @@ const { createReadStream } = require('fs');
 const { createInterface } = require('readline');
 
 async function csvFileTo2DArray(file, delim=',', headRow=true, filterAscii=false) {
-  var idx = 0; //line count. 1 less that total rows if headRow.
+  var idx = 0; //line count. 1 less than total rows if headRow.
   var rows = []; //2D array of rows. rows in array form or object form depending upon header.
   var head = [];
   var ret = {"rows":rows, "rowCount":idx, "header":head};
@@ -26,12 +26,12 @@ async function csvFileTo2DArray(file, delim=',', headRow=true, filterAscii=false
       var rowO = {};
       if (headRow && idx==0 && head.length==0) {
         head = rowA;
-      } else if (headRow) {
-        for (var i=0; i<rowA.length; i++) {
-          rowO[head[i]] = rowA[i];
+      } else if (headRow) { //convert rowArray to rowObject having key:value pairs
+        for (var i=0; i<rowA.length; i++) { //iterate over rowArray
+          rowO[head[i]] = rowA[i]; //set rowObject key:value pair
         }
-        rows[idx++] = rowO;
-      } else {
+        rows[idx++] = rowO; //set rowsArray object
+      } else { //no headrow: build and return rowArray only
         rows[idx++] = rowA;
       }
     });

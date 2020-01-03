@@ -4,7 +4,8 @@ CREATE TABLE val_vernacular
 (
 "vernacularId" SERIAL UNIQUE PRIMARY KEY,
 "taxonId" VARCHAR NOT NULL,
-"vernacularName" VARCHAR UNIQUE,
+"scientificName" VARCHAR NOT NULL,
+"vernacularName" VARCHAR NOT NULL,
 "lifeStage" VARCHAR,
 "sex" VARCHAR,
 "language" VARCHAR,
@@ -12,8 +13,13 @@ CREATE TABLE val_vernacular
 "source" VARCHAR,
 "createdAt" timestamp without time zone DEFAULT now(),
 "updatedAt" timestamp without time zone DEFAULT now(),
-CONSTRAINT fk_taxon_id FOREIGN KEY ("taxonId") REFERENCES val_species ("taxonId")
+CONSTRAINT fk_taxon_id FOREIGN KEY ("taxonId") REFERENCES val_species ("taxonId"),
+CONSTRAINT "unique_taxonId_vernacularName" UNIQUE("taxonId","vernacularName")
 );
+--NOTE: apply unique constraint to pair of fields. We may have the same vernacular name applied to more than
+--one taxonId.
+--ALTER TABLE val_vernacular DROP CONSTRAINT "val_vernacular_vernacularName_key";
+--ALTER TABLE val_vernacular ADD CONSTRAINT "unique_taxonId_vernacularName" UNIQUE("taxonId","vernacularName");
 
 ALTER TABLE val_vernacular OWNER to VAL;
 
