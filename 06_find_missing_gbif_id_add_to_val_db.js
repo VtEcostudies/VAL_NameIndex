@@ -34,53 +34,62 @@ var paths = require('./00_config').paths;
 const query = require('./database/db_postgres').query;
 const pgUtil = require('./database/db_pg_util');
 const gbifToValDirect = require('./98_gbif_to_val_columns').gbifToValDirect;
+const log = require('./97_utilities').log;
 var staticColumns = [];
 
-console.log(`config paths: ${JSON.stringify(paths)}`);
-
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
+var baseName = 'Add_Missing_VAL_Taxa';
+var subDir = `${baseName}/`; //put output into a sub-dir so we can easily find it
 var logFileName = 'insert_missing_taxa_' + moment().format('YYYYMMDD-HHMMSS') + '.txt';
-var wStream = []; //array of write streams
+var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`, {flags: 'w'});
+var errFileName = 'err_' + baseName + '.txt';
+var errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`, {flags: 'w'});
+var rowCount = 0;
 var insCount = 0;
 var errCount = 0;
 
-console.log('output file name', logFileName);
+process.on('exit', function(code) {
+  displayStats();
+  return console.log(`About to exit with code ${code}`);
+});
 
-wStream[0] = fs.createWriteStream(`${dataDir}/${logFileName}`, {flags: 'w'});
+log(`config paths: ${JSON.stringify(paths)}`, logStream, true);
+log(`log file name: ${logFileName}`, logStream, true);
+log(`err file name: ${errFileName}`, logStream, true);
 
 getColumns()
   .then(res => {
     getValMissing()
       .then(res => {
-        console.log(res.rowCount, 'missing gbif Ids.', 'First row:', res.rows[0]);
+        rowCount = res.rows.length;
+        log(`${res.rowCount} missing gbif Ids. | First row: ${JSON.stringify(res.rows[0])}`, logStream, true);
         for (var i=0; i<res.rowCount; i++) {
           getGbifSpecies(res.rows[i].taxonId) //use taxonId - only column returned from SELECT query
             .then(res => {
               insertValTaxon(res)
                 .then(res => {
                   insCount++;
-                  const msg = `insertValTaxon SUCCESS | taxonId:${res.val.taxonId}`;
-                  console.log(msg);
-                  wStream[0].write(`${msg}\n`);
+                  log(`insertValTaxon SUCCESS | taxonId:${res.val.taxonId}`, logStream);
                 })
                 .catch(err => {
                   errCount++;
-                  const msg = `insertValTaxon ERROR | gbifId:${err.val.taxonId} | error:${err.message}`;
-                  console.log(msg);
-                  wStream[0].write(`${msg}\n`);
+                  log(`insertValTaxon ERROR ${errCount} | gbifId:${err.val.taxonId} | error:${err.message}`, logStream, true);
+                  log(`${err.gbif.key}|${err.gbif.scientificName}`, errStream, true);
                 })
             })
             .catch(err => {
-              console.log('getGbifSpecies ERROR |', err.message);
+              errCount++;
+              log(`getGbifSpecies ERROR ${errCount} | ${err.message}`, logStream, true);
+              log(`${err.key}`, errStream, true);
             })
         }
       })
       .catch(err => {
-        console.log('getValMissing ERROR |', err.message);
+        log(`getValMissing ERROR | ${err.message}`, logStream, true);
       });
   })
   .catch(err => {
-    console.log('getColumns ERROR |', err.message);
+    log(`getColumns ERROR | ${err.message}`, logStream, true);
   })
 
 function getColumns() {
@@ -93,6 +102,7 @@ NOTE: taxonId and acceptedNameUsageId are text, while gbifId is integer.
 */
 async function getValMissing() {
   var text = '';
+
   text = `select vg."taxonId"
           from val_species vs
           right join val_gbif_taxon_id vg
@@ -168,9 +178,11 @@ function getGbifSpecies(key) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err) {
+        err.key = key;
         reject(err);
       } else {
-        console.log(`getGbifSpecies(${key}) | ${res.statusCode}`);
+        log(`getGbifSpecies(${key}) | ${res.statusCode}`);
+        body.key = key;
         resolve(body);
       }
     });
@@ -179,7 +191,7 @@ function getGbifSpecies(key) {
 
 async function insertValTaxon(gbif) {
   //translate gbif api values to val columns
-  console.log(`taxonId = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`);
+  log(`taxonId = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`, logStream);
 
   var val = gbifToValDirect(gbif);
 
@@ -198,4 +210,8 @@ async function insertValTaxon(gbif) {
         reject(err);
       })
   })
+}
+
+function displayStats() {
+  log(`total:${rowCount}|inserted:${insCount}|errors:${errCount}`, logStream, true);
 }

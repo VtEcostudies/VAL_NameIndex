@@ -17,8 +17,8 @@ function gbifToValDirect(gbif) {
   val.gbifId=gbif.key;
   val.taxonId=gbif.key;
   val.scientificName=gbif.canonicalName?gbif.canonicalName:gbif.scientificName; //scientificName often contains author. nameindexer cannot handle that, so remove it.
-  val.acceptedNameUsageId=gbif.acceptedKey?gbif.acceptedKey:null;//gbif.key;
-  val.acceptedNameUsage=gbif.accepted?gbif.accepted:null;//gbif.scientificName;
+  val.acceptedNameUsageId=gbif.acceptedKey?gbif.acceptedKey:gbif.key;
+  val.acceptedNameUsage=gbif.accepted?gbif.accepted:gbif.scientificName;
   val.taxonRank=gbif.rank?gbif.rank.toLowerCase():null;
   val.taxonomicStatus=gbif.taxonomicStatus?gbif.taxonomicStatus.toLowerCase():null;
   val.parentNameUsageId=gbif.parentKey?gbif.parentKey:null;
@@ -26,6 +26,7 @@ function gbifToValDirect(gbif) {
   val.scientificNameAuthorship=gbif.authorship?gbif.authorship:null;
   val.vernacularName=gbif.vernacularName?gbif.vernacularName:null;
   val.taxonRemarks=gbif.remarks?gbif.remarks:null;
+
   val.kingdom=gbif.kingdom?gbif.kingdom:null;
   val.kingdomId=gbif.kingdomKey?gbif.kingdomKey:null;;
   val.phylum=gbif.phylum?gbif.phylum:null;
@@ -108,6 +109,7 @@ function gbifToValIngest(gbif, src) {
   src.taxonRemarks=src.taxonRemarks?src.taxonRemarks.trim():null;
   val.taxonRemarks=gbif.remarks?'gbif:'+gbif.remarks:null+src.taxonRemarks?'val:'+src.taxonRemarks:null;
   val.taxonomicStatus=gbif.taxonomicStatus?gbif.taxonomicStatus.toLowerCase():null;
+
   val.kingdom=gbif.kingdom?gbif.kingdom:null;
   val.kingdomId=gbif.kingdomKey?gbif.kingdomKey:null;;
   val.phylum=gbif.phylum?gbif.phylum:null;

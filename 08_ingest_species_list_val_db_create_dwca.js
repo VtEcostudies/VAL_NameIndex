@@ -30,6 +30,11 @@
   5. (Removed) Keep track of taxonId values for higher-order taxa and output to file for processing later.
   (Step 5 was moved to a separate file.)
 
+  To-do 01-16-2020:
+
+  - use logErr to put errors into separate file for post-processing
+  - if that works, remove code to read processed data (the other attempt to deal with errors)
+
 */
 
 const logHand = require('why-is-node-running');
@@ -68,27 +73,34 @@ var baseName = '';
 //baseName = 'Freshwater_Mussels_Vermont';
 //baseName = 'Plants_Vermont';
 //baseName = 'Syrphids_Vermont';
-baseName = 'Error_Corrections';
+//baseName = 'Error_Corrections';
+//baseName = 'Springtails_VT';
+//baseName = 'Bryophytes_VT';
+baseName = 'Vermont_Conservation_Missing'; //the not-found taxa from adding Vermont_Conservation_Status: 1300 rows!
 
 //var subDir = 'dwca-checklist-crickets_katydids-vt-v1.4/'; // - INCLUDING TRAILING SLASH
 //subDir = 'dwca-checklist_vermont_mammals-v1.2/';
 subDir = baseName + '/';
-//var inputFileName = 'taxon.txt'; //this for incoming dwca
-inputFileName = baseName + '.csv';
+//var inputFileName = 'taxon.txt'; //this for incoming dwca that was submitted via IPT
+if (inputFileDelim == ",") {
+  inputFileName = baseName + '.csv';
+} else if (inputFileDelim == '\t') {
+  inputFileName = baseName + '.txt';
+}
 var outputFileName = 'val_' + inputFileName;
 var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSS') + '_' + inputFileName;
 var processedFileName = 'proc_' + inputFileName;
+var errFileName = 'err_' + inputFileName;
 var headRow = true;
 var rowCount = 0; //count records available
 var outCount = 0; //count records completed so far
 var insCount = 0; //count records inserted
 var updCount = 0; //count records updated
 var errCount = 0; //count record errors
-var errQueue = []; ///array of error records (not used yet - for connection timeouts)
 var wStream = {}; //array of write streams
 
-var dbInsert = 0;
-var dbUpdate = 0;
+var dbInsert = 1;
+var dbUpdate = 1;
 
 var taxonIdObj = {}; //an object with keys for all taxonIds referenced here
 var rowsToSkip = {}; //an object of source rows already processed - read from the processed file
@@ -130,34 +142,42 @@ getColumns()
           //this can't work yet - have to change result file write mode to 'append' when we are picking-up
           //from a dropped processing session.
           //if (rowsToSkip[src.rows[i]]) {console.log(`(would if we could) SKIPPING source row ${i}`);} //continue;}
-          //await matchGbifSpecies(src.rows[i], i)
-          matchGbifSpecies(src.rows[i], i)
+          await matchGbifSpecies(src.rows[i], i)
+          //matchGbifSpecies(src.rows[i], i)
             .then(async (gbf) => {
+              //rankmatch is true if they match, or if the incoming dataSet did not specify...
+              var rankMatch = gbf.src.taxonRank?(gbf.rank.toLowerCase()==gbf.src.taxonRank.toLowerCase()):true;
               //A successful match returns a single object or empty. if empty, we do not get an error.
               //if the match returned an object, check that the taxonRank is the same. If it is not,
               //then the match was not successful - proceed to findGbifSpecies.
-              if (gbf.usageKey && gbf.rank.toLowerCase()==gbf.src.taxonRank.toLowerCase()) { //found a match - EXACT or FUZZY?
-                //await getGbifSpecies(gbf, gbf.src, gbf.idx)
-                getGbifSpecies(gbf, gbf.src, gbf.idx)
-                  .then((res) => {processResults(res, res.src);}).catch((err) => {log(`getGbifSpecies ERROR | ${err}`);});
+              if (gbf.usageKey && rankMatch) { //found a match - EXACT or FUZZY?
+                await getGbifSpecies(gbf, gbf.src, gbf.idx)
+                //getGbifSpecies(gbf, gbf.src, gbf.idx)
+                  .then((res) => {processResults(res, res.src);})
+                  .catch((err) => {
+                    log(`getGbifSpecies ERROR | ${err.src.scientificName} | ${err}`);
+                    logErr(err.src.scientificName);
+                  });
               } else { //empty or incorrect result - try to find the source object another way
-                //await findGbifSpecies(gbf.src, gbf.idx)
-                findGbifSpecies(gbf.src, gbf.idx)
+                await findGbifSpecies(gbf.src, gbf.idx)
+                //findGbifSpecies(gbf.src, gbf.idx)
                   .then((res) => {
                       processResults(res.self, res.src);
                   })
                   .catch(err => {
-                    log(`findGbifSpecies ERROR | ${err}`);
+                    log(`findGbifSpecies ERROR | ${err.src.scientificName} | ${err}`);
+                    logErr(err.src.scientificName)
                   })
                 } //end else
               })
             .catch((err) => {
-              //log(`matchGbifSpecies ERROR | ${err}`);
+              log(`matchGbifSpecies ERROR | ${err.src.scientificName} | ${err}`);
+              logErr(err.src.scientificName)
             });
         } //end for loop
       })
       .catch(err => {
-        //log(`getSpeciesFile ERROR | ${err}`);
+        log(`getSpeciesFile ERROR | ${err}`);
       });
   })
   .catch(err => {
@@ -191,7 +211,7 @@ function processResults(gbf, src) {
 
     var val = gbifToValIngest(gbf, src);
     writeResultToFile(val);
-    //writeProcessedToFile(src); //make a file of source rows processed
+    writeProcessedToFile(src); //make a file of source rows processed
     if (dbInsert) {
       insertValTaxon(val, gbf.idx)
         .then(ins => {
@@ -256,7 +276,8 @@ function matchGbifSpecies(src, idx) {
       if (err) {
         console.log('matchGbifSpecies|err.code:', err.code);
         src.err = {"code":err.code, "func":"matchGbifSpecies"};
-        errQueue[errCount++] = src;
+        err.src = src;
+        err.idx = idx;
         reject(err);
       } else {
         log(`matchGbifSpecies(${src.scientificName}) | ${res.statusCode} | ${body.usageKey?1:0} results found.`);
@@ -282,7 +303,7 @@ a best match, initially defined as:
 ret.gbif:
   - the first array element having taxonomicStatus==ACCEPTED, if one exists
   overriding that:
-  - the first array element having taxonomicStatus==ACCEPTED  nd defined rank, if one exists
+  - the first array element having taxonomicStatus==ACCEPTED and defined rank, if one exists
 
 ret.self:
   - the first array element where GBIF:scientificName==SOURCE:scientificName, if one exists
@@ -301,6 +322,8 @@ function findGbifSpecies(src, idx) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err) {
+        err.src = src;
+        err.idx = idx;
         reject(err);
       } else {
         var res = body.results?body.results:[];
@@ -320,9 +343,11 @@ function findGbifSpecies(src, idx) {
             if (res[i].rank && !res[acpt].rank) {acpt=i;}
           }
           //select the gbif raw match to supplied taxon as 'self' - 1) sciName is equal, 2) there is a rank listed
+          //NOTE: this DOES NOT WORK YET for subspecies! ...because sciName contains var. variety, subsp. subspecies, ...
+          //FURTHER NOTE: I don't see how this works with sciName containing author?!
           if (res[i].scientificName == name) {
-            if (self<0) self=i;
-            if (res[i].rank && !res[self].rank) {self=i;}
+            if (self<0) self=i; //this keeps the earliest valid result (prefer res[1] over res[2], all things being equal)
+            if (res[i].rank && !res[self].rank) {self=i;} //preferentially swap-in entries with defined RANK
           }
         }
         //if an accepted name or self-match was found, return the first, most valid instance
@@ -354,10 +379,13 @@ function getGbifSpecies(gbf, src, idx) {
       if (err) {
         console.log('getGbifSpecies|err.code:', err.code);
         src.err = {"code":err.code, "func":"getGbifSpecies"};
-        errQueue[errCount++] = src;
+        err.gbf = gbf;
+        err.src = src;
+        err.idx = idx;
         reject(err);
       } else {
         log(`getGbifSpecies(${gbf.scientificName}) | ${res.statusCode} | gbifKey:${body.key?key:undefined}`);
+        body.gbf = gbf;
         body.src = src; //attach incoming gbif row-object to returned object for downstream use
         body.idx = idx; //attach incoming row index to returned object for downstream use
         resolve(body);
@@ -493,15 +521,29 @@ function writeResultToFile(val) {
 }
 
 function writeProcessedToFile(src) {
+  var out = '';
+  var fld = '';
 
   if (!wStream['processed']) {
     wStream['processed'] = fs.createWriteStream(`${dataDir}${subDir}${processedFileName}`, {flags: 'w', encoding: 'utf8'});
   }
-  wStream['processed'].write(`${src}\n`);
+
+  for (const key in src) {
+    fld = src[key] || '';
+    if (isNaN(fld)) { //check for null, numeric
+      //check for leading and trailing double-quotes
+      if (fld.substring(0,1) != `"` && fld.substring(fld.length-1,fld.length) != `"`) {
+        fld = `"${fld}"`;
+      }
+    }
+    out += fld + outputFileDelim;
+  }
+  out = out.replace(/(^,)|(,$)/g, "");//remove leading, trailing delimiter
+  wStream['processed'].write(`${out}\n`);
 }
 
 function displayStats() {
-  log(`total:${rowCount}|inserted:${insCount}|updated:${updCount}|output:${outCount}`);
+  log(`total:${rowCount}|inserted:${insCount}|updated:${updCount}|output:${outCount}|errors:${errCount}`);
 }
 
 function log(out) {
@@ -510,4 +552,17 @@ function log(out) {
     wStream['log']=fs.createWriteStream(`${dataDir}${subDir}${logFileName}`);
   }
   wStream['log'].write(`${out}\n`);
+}
+
+async function logErr(txt) {
+  errCount++;
+  try {
+    console.log(`Added to Error File: ${txt}`);
+    if (!wStream['err']) {
+      wStream['err'] = await fs.createWriteStream(`${dataDir}${subDir}${errFileName}`);
+    }
+    wStream['err'].write(txt + '\n');
+  } catch(error) {
+    throw error;
+  }
 }

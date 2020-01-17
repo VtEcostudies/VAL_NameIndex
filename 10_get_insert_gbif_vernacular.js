@@ -3,9 +3,9 @@
 
   Project: VAL_Species
 
-  File: 10_get_insert_gbif_vernacula.js
+  File: 10_get_insert_gbif_vernacular.js
 
-  Purpose: Retrieve vernacular names from GBIF and insert into vsl_vernacular
+  Purpose: Retrieve vernacular names from GBIF and insert into val_vernacular.
 
   Specifics:
 

@@ -3,17 +3,17 @@
 
   Project: VAL_Species
 
-  File: 10_get_insert_gbif_vernacula.js
+  File: 11_get_update_gbif_vernacular.js
 
-  Purpose: Retrieve vernacular names from GBIF and insert into vsl_vernacular
+  Purpose: Retrieve vernacular names missing language and source from GBIF and
+  update val_vernacular with those.
 
   Specifics:
 
-  Query all taxa in val_species, get their GBIF vernacular names, and insert
-  into val_vernacular.
+  Query values in val_vernacular missing language, get their GBIF vernacular info,
+  and update val_vernacular.
 
-  Query the GBIF species vernacular API for a list of values for each taxonId in
-  val_species.
+  Query the GBIF species vernacular API for data.
 */
 
 //https://nodejs.org/api/readline.html
@@ -39,7 +39,7 @@ logStream = fs.createWriteStream(`${dataDir}/${logFileName}`, {flags: 'w'});
 log(`config paths: ${JSON.stringify(paths)}`, logStream);
 log(`output file name ${logFileName}`, logStream);
 
-getColumns()
+getColumns("val_vernacular")
   .then(res => {
     getValTaxa()
       .then(async res => {
@@ -79,9 +79,9 @@ getColumns()
     log(`ERROR: getColumns | ${err.message}`, logStream);
   })
 
-function getColumns() {
+function getColumns(tableName) {
   //file scope list of target table columns retrieved on startup
-  return pgUtil.getColumns("val_vernacular", staticColumns);
+  return pgUtil.getColumns(tableName, staticColumns);
 }
 
 /*

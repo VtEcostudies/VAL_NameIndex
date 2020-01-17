@@ -4,16 +4,17 @@ DROP TABLE IF EXISTS val_conservation_status;
 
 CREATE TABLE val_conservation_status
 (
-	"gbifId" INTEGER NOT NULL,
-	"taxonId" VARCHAR NOT NULL UNIQUE PRIMARY KEY,
-	"SGCN" VARCHAR, --Species of Greatest Conservation Need
-	"stateRank" VARCHAR,
-	"globalRank" VARCHAR,
-	"federalListed" VARCHAR, --Federally endangered or threatened
-	"stateListed" VARCHAR, --State endangered or threatened
+	"taxonId" VARCHAR NOT NULL,
+	"scientificName" VARCHAR NOT NULL,
+	"SGCN" BOOLEAN, --Species of Greatest Conservation Need
+	"stateRank" VARCHAR [],
+	"globalRank" VARCHAR [],
+	"federalList" VARCHAR [], --Federally endangered or threatened
+	"stateList" VARCHAR [], --State endangered or threatened
 	"createdAt" timestamp without time zone DEFAULT now(),
 	"updatedAt" timestamp without time zone DEFAULT now(),
-	CONSTRAINT fk_taxon_id FOREIGN KEY ("taxonId") REFERENCES val_species ("taxonId")
+	CONSTRAINT fk_taxon_id FOREIGN KEY ("taxonId") REFERENCES val_species ("taxonId"),
+	CONSTRAINT "unique_conservation_status_taxonId" UNIQUE ("taxonId")
 );
 
 ALTER TABLE val_conservation_status OWNER to VAL;

@@ -1,9 +1,9 @@
 const query = require('./db_postgres').query;
 
 module.exports = {
-  getColumns: (tableName, columns) => getColumns(tableName, columns),
-  whereClause: (params, columns) => whereClause(params, columns),
-  parseColumns: (body, idx, cValues, staticColumns) => parseColumns(body, idx, cValues, staticColumns)
+  getColumns: (tableName, columns, types) => getColumns(tableName, columns, types),
+  whereClause: (params, columns, types) => whereClause(params, columns, types),
+  parseColumns: (body, idx, cValues, staticColumns, staticTypes) => parseColumns(body, idx, cValues, staticColumns, staticTypes)
 }
 
 /*
@@ -11,24 +11,27 @@ module.exports = {
 
     CORRECTION: it DOES NOT WORK to return an array.
 
-    HOWEVER: it does wlgc to pass and array as an argument to
+    HOWEVER: it does work to pass an array as an argument to
     this funtion, by reference, and update that array here.
 
     OPTIONS: (1) Pass an empty array to be filled here, or
     (2) Use the object returned from here.
 
  */
-async function getColumns(tableName, columns=[]) {
+async function getColumns(tableName, columns=[], types=[]) {
 
     const text = `select * from ${tableName} limit 0;`;
 
     await query(text)
         .then(res => {
+            //console.log(res);
             res.fields.forEach(fld => {
                 columns.push(String(fld.name));
+                types.push(fld.dataTypeID);
             });
-            console.log(`${tableName} columns:`, columns);
-            return {tableName: columns};
+            //console.log(`${tableName} columns:`, columns);
+            //console.log(`${tableName} type OIDs:`, types);
+            return {tableName: columns, types: types};
         })
         .catch(err => {
             throw err;
@@ -73,7 +76,7 @@ async function getColumns(tableName, columns=[]) {
     puts the N different values for a repeated argument into a sub-array of values for us.
 
  */
-function whereClause(params={}, staticColumns=[]) {
+function whereClause(params={}, staticColumns=[], staticTypes=[]) {
     var where = '';
     var values = [];
     var idx = 1;
@@ -131,7 +134,7 @@ function whereClause(params={}, staticColumns=[]) {
 
     body: an express req.body object
     idx: positive integer starting value for the returned 'numbered' value list
-    cValue: empty or pre-populated array of query values
+    cValues: empty or pre-populated array of query values
     staticColumns: array of valid columns in the table
 
     returns object having:
@@ -140,17 +143,31 @@ function whereClause(params={}, staticColumns=[]) {
         'numbered': $1,$2,$3,...
         'values': ['jdoh','jdoh@dohsynth.com','91837',...]
     }
+
+    new: handles array of strings type, OID=1015
+    incoming csv values like 'one, two, three' converted to {"one","two","three"}
  */
-function parseColumns(body={}, idx=1, cValues=[], staticColumns=[]) {
+function parseColumns(body={}, idx=1, cValues=[], staticColumns=[], staticTypes=[]) {
     var cNames = ''; // "username,email,zipcode,..."
     var cNumbr = ''; // "$1,$2,$3,..."
 
-    //console.log(`db_pg_util.parseColumns`, body, idx, cValues, staticColumns);
+    //console.log(`db_pg_util.parseColumns`, body, idx, cValues, staticColumns, staticTypes);
 
     if (Object.keys(body).length) {
         for (var key in body) {
             if (staticColumns.includes(key)) { //test for key (db column) in staticColumns, a file-scope array of db columns generated at server startup
-                cValues.push(body[key]);
+                if (staticTypes[staticColumns.indexOf(key)]==1015 && body[key]) { //type == array of strings
+                  //make incoming one, two, three into {"one","two","three"}
+                  var valArr = body[key].split(",");
+                  var valList = '';
+                  for (var aid in valArr) { //an array
+                    valList += `"${valArr[aid]}",`
+                  }
+                  valList = valList.replace(/(^,)|(,$)/g, "");
+                  cValues.push(`{${valList}}`);
+                } else {
+                  cValues.push(body[key]);
+                }
                 cNames += `"${key}",`;
                 cNumbr += `$${idx++},`;
             } else {
