@@ -50,7 +50,7 @@ async function csvFileTo2DArray(file, delim=',', headRow=true, filterAscii=false
 
   } catch (err) {
     console.error(err);
-    //throw err; //?
+    throw err; //?
   }
 };
 

@@ -21,7 +21,7 @@ function gbifToValDirect(gbif) {
   val.acceptedNameUsage=gbif.accepted?gbif.accepted:gbif.scientificName;
   val.taxonRank=gbif.rank?gbif.rank.toLowerCase():null;
   val.taxonomicStatus=gbif.taxonomicStatus?gbif.taxonomicStatus.toLowerCase():null;
-  val.parentNameUsageId=gbif.parentKey?gbif.parentKey:null;
+  val.parentNameUsageId=gbif.parentKey?gbif.parentKey:getParentKeyFromTreeKeys(gbif);
   val.nomenclaturalCode='GBIF';
   val.scientificNameAuthorship=gbif.authorship?gbif.authorship:null;
   val.vernacularName=gbif.vernacularName?gbif.vernacularName:null;
