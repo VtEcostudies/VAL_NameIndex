@@ -27,11 +27,11 @@ const log = require('./97_utilities').log;
 var staticColumns = [];
 
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
-var logFileName = 'get_insert_vernacular_names_' + moment().format('YYYYMMDD-HHMMSS') + '.txt';
+var logFileName = 'get_insert_vernacular_names_' + moment().format('YYYYMMDD-HHMMSSS') + '.txt';
 var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
-var offset = 0;
+var offset = 100;
 var limit = 25000;
 
 logStream = fs.createWriteStream(`${dataDir}/${logFileName}`, {flags: 'w'});
@@ -45,7 +45,7 @@ getColumns()
       .then(async res => {
         log(`${res.rowCount} val_species taxa | First row: ${res.rows[0]}`, logStream);
         for (var i=0; i<res.rowCount; i++) {
-          log(`COUNT | ${offset+i}`);
+          log(`COUNT | ${offset+i}`, logStream, true);
           await getGbifVernacularNames(res.rows[i]) //use taxonId - a column returned from SELECT query
             .then(async res => {
               for (var j=0; j<res.results.length; j++) { //gbif api syntax - 'results' not 'rows'...
@@ -57,7 +57,7 @@ getColumns()
                   .then(res => {
                     insCount++;
                     const msg = `SUCCESS: insertValVernacular | ${res.val.taxonId} | ${res.val.scientificName} | ${res.val.vernacularName}`;
-                    log(msg, logStream);
+                    log(msg, logStream, true); //just echo successes
                   })
                   .catch(err => {
                     errCount++;
@@ -91,15 +91,15 @@ async function getValTaxa() {
   var text = '';
   text = `select s."taxonId", s."scientificName"
           from val_species s
-          offset ${offset}`;
-          //limit ${limit}
+          offset ${offset}
+          limit ${limit}`;
 
   return await query(text);
 }
 
 function getGbifVernacularNames(val) {
   var parms = {
-    url: `http://api.gbif.org/v1/species/${val.taxonId}/vernacularNames`,
+    url: `http://api.gbif.org/v1/species/${val.taxonId}/vernacularNames?limit=1000`,
     json: true
   };
 

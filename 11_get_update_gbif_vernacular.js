@@ -27,7 +27,7 @@ const log = require('./97_utilities').log;
 var staticColumns = [];
 
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
-var logFileName = 'get_update_vernacular_names_' + moment().format('YYYYMMDD-HHMMSS') + '.txt';
+var logFileName = 'get_update_vernacular_names_' + moment().format('YYYYMMDD-HHMMSSS') + '.txt';
 var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
@@ -99,7 +99,7 @@ async function getValTaxa() {
 
 function getGbifVernacularNames(val) {
   var parms = {
-    url: `http://api.gbif.org/v1/species/${val.taxonId}/vernacularNames`,
+    url: `http://api.gbif.org/v1/species/${val.taxonId}/vernacularNames?limit=1000`,
     json: true
   };
 

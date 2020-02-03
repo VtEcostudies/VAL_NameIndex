@@ -3,7 +3,7 @@
 
   Project: VAL_Species
 
-  File: 08_ingest_species_list_val_db_create_dwca.js
+  File: 09_ingest_species_list_new_not_found.js
 
   Purpose: Incorporate new VT Species Registry checklist files into the val_species
   database, create a corrected taxon file for a future DwCA checklist to be
@@ -11,29 +11,21 @@
   these new species in the ALA nameindexer, and create log files to keep an
   account of what was done.
 
+  This ingestion tool is different from 08, which only ingests species that match
+  in GBIF.
+
+  Ingest those errors from a file that contains well-researched recent taxon
+  changes or developments, and 'force' their ingestion.
+
   Specifics:
 
-  Kent has a mosquito species file, and some more files. He wants to:
-
   1. include these species in val_species table of val_db with proper taxonIds, etc.
-  2. produce a DwCA taxon.txt file with proper taxonIds, etc. for publishing on our IPT
+  2. produce a DwCA output file with proper taxonIds, etc. for publishing on our IPT
 
   To do that we will:
 
   1. open the file and parse rows into object having key:value pairs for all data
-  2. using scientificName w/o author lookup/find that taxon on GBIF API:
-    a. http://api.gbif.org/v1/species/match?name=Aedes%20cinereus
-    b. http://api.gbif.org/v1/species?name=Aedes%20cinereus
-  3. (a) looks better. if result has matchType=='EXACT', then we use it. if matchType=='FUZZY',
-  not sure what to do.
-  4. We use the /match API's 'usageKey' as gbifId and taxonId. Missing from this API result is authorship. Not sure why.
-  5. (Removed) Keep track of taxonId values for higher-order taxa and output to file for processing later.
-  (Step 5 was moved to a separate file.)
 
-  To-do 01-16-2020:
-
-  - use logErr to put errors into separate file for post-processing
-  - if that works, remove code to read processed data (the other attempt to deal with errors)
 
   To-do 01-27-2020:
 
@@ -57,13 +49,11 @@ const paths = require('./00_config').paths;
 const query = require('./database/db_postgres').query;
 const pgUtil = require('./database/db_pg_util');
 const csvFileTo2DArray = require('./99_parse_csv_to_array').csvFileTo2DArray;
-const gbifToValIngest = require('./98_gbif_to_val_columns').gbifToValIngest;
 const addCanonicalName = require('./97_utilities').addCanonicalName;
 const addTaxonRank = require('./97_utilities').addTaxonRank;
 const log = require('./97_utilities').log;
-const logErr = require('./97_utilities').logErr;
 
-const inputFileDelim = ",";
+const inputFileDelim = "\t";
 const outputFileDelim = ",";
 
 var staticColumns = [];
@@ -72,39 +62,16 @@ console.log(`config paths: ${JSON.stringify(paths)}`);
 
 var dataDir = paths.dataDir; //path to directory holding source data files - INCLUDING TRAILING SLASH
 var baseName = '';
-//baseName = 'spidersVTlist';
-//baseName = 'WhirligigBeetles';
-//baseName = 'BombusChecklist';
-//baseName= 'CicadaVermont';
-//baseName= 'Orthoptera_Vermont';
-//baseName= 'Ticks_Vermont';
-//baseName= 'Spiders_Vermont';
-//baseName= 'Amphibian_Reptile_Vermont';
-//baseName = 'Robber_Flies_Vermont';
-//baseName = 'Butterflies_Vermont';
-//baseName = 'Crayfish_Vermont';
-//baseName = 'Dragonflies_Damselflies_Vermont';
-//baseName = 'Fish_Vermont';
-//baseName = 'Freshwater_Mussels_Vermont';
-//baseName = 'Plants_Vermont';
-//baseName = 'Syrphids_Vermont';
-//baseName = 'Error_Corrections';
-//baseName = 'Springtails_VT';
-//baseName = 'Bryophytes_VT';
 baseName = 'Vermont_Conservation_Missing'; //the not-found taxa from adding Vermont_Conservation_Status
 
 var subDir = baseName + '/';
-
-if (inputFileDelim == ",") {
-  inpFileName = baseName + '.csv';
-} else if (inputFileDelim == '\t') {
-  inpFileName = baseName + '.txt';
-}
+var inpFileName = 'new_' + baseName + '.txt';
 var outFileName = 'val_' + inpFileName;
 var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
 var errFileName = 'err_' + inpFileName;
 
 //Don't create outStream here. Empty outStream flags writing header to file.
+var outStream = null;
 //var outStream = fs.createWriteStream(`${dataDir}${subDir}${outFileName}`);
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`);
 var errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`);
@@ -117,8 +84,8 @@ var updCount = 0; //count records updated
 var notCount = 0; //count records NOT found
 var errCount = 0; //count record errors
 
-var dbInsert = 0;
-var dbUpdate = 0;
+var dbInsert = 1;
+var dbUpdate = 1; //BE CAREFUL - we use our own taxonIds in here. If you dont guarantee unique, you'll overwrite!
 
 process.on('exit', function(code) {
   displayStats();
@@ -132,9 +99,9 @@ getColumns()
         log(`Input file rowCount:${src.rowCount} | Header:${src.header}`);
         rowCount = src.rows.length;
         for (var i=0; i<src.rows.length; i++) {
+          if (!src.rows[i].action || src.rows[i].action == 'delete') {log(`skipping ${src.rows[i].scientificName}`, logStream, true); continue;}
           await addCanonicalName(src.rows[i], logStream); //parse scientificName into canonicalName and add to src object
           await matchGbifSpecies(src.rows[i], i)
-          //matchGbifSpecies(src.rows[i], i)
             .then(async (gbf) => {
               var rankMatch = false;
               if (gbf.results) {
@@ -153,30 +120,25 @@ getColumns()
                 if (!rankMatch) {
                   log(`taxonRank mismatch|source:${gbf.src.taxonRank.toLowerCase()}|gbif:${gbf.rank.toLowerCase()}`, logStream, true);
                 }
+              } else if (!src.taxonRank) {
+                await addTaxonRank(gbf.src, logStream); //parse canonicalName to derive rank
               }
               if (gbf.results && rankMatch) { //found a match - EXACT or FUZZY?
                 await getGbifSpecies(gbf, gbf.src, gbf.idx)
-                //getGbifSpecies(gbf, gbf.src, gbf.idx)
                   .then((res) => {processResults(res, res.src);})
                   .catch((err) => {
                     log(`getGbifSpecies ERROR | ${err.src.scientificName} | ${JSON.stringify(err)}`, logStream, true);
-                    log(err.src.scientificName, errStream);
+                    log(`${err.idx} | getGbifSpecies ERROR | gbifId:${err.src.taxonId} | error:${err.message}`, errStream);
+                    logErr(jsonToString(err.src), errStream);
                   });
-              } else { //empty or incorrect result - try to find the source object another way
-                await findGbifSpecies(gbf.src, gbf.idx)
-                //findGbifSpecies(gbf.src, gbf.idx)
-                  .then((res) => {
-                      processResults(res.self, res.src);
-                  })
-                  .catch(err => {
-                    log(`findGbifSpecies ERROR | ${err.src.scientificName} | ${JSON.stringify(err)}`, logStream, true);
-                    log(err.src.scientificName, errStream)
-                  })
+              } else { //empty or incorrect result - insert it with whatever data we've got
+                  processResults(gbf, gbf.src);
                 } //end else
               })
             .catch((err) => {
               log(`matchGbifSpecies ERROR | ${err.src.scientificName} | ${JSON.stringify(err)}`, logStream, true);
-              log(err.src.scientificName, errStream)
+              log(`${err.idx} | matchGbifSpecies ERROR | gbifId:${err.src.taxonId} | error:${err.message}`, errStream);
+              logErr(jsonToString(err.src), errStream);
             });
         } //end for loop
       })
@@ -212,29 +174,36 @@ function processResults(gbf, src) {
 
     log(`gbifToValIngest |
       gbifId:${gbf.key} | GBIF scientificName:${gbf.scientificName} | GBIF canonicalName:${gbf.canonicalName} | GBIF rank:${gbf.rank}`
-    , logStream);
+    , logStream, true);
 
-    var val = gbifToValIngest(gbf, src);
+    var val = valIngestNew(gbf, src);
     writeResultToFile(val);
     if (dbInsert) {
       insertValTaxon(val, gbf.idx)
         .then(ins => {
           insCount++;
-          log(`${ins.idx} | insertValTaxon SUCCESS | gbifId:${ins.val.taxonId} | Inserted:${insCount}`, logStream, true);
+          log(`${ins.idx} | insertValTaxon SUCCESS | taxonId:${ins.val.taxonId} | Inserted:${insCount}`, logStream, true);
         })
         .catch(err => {
           //console.log(err.idx, 'insertValTaxon ERROR | gbifId:', err.val?err.val.taxonId:'err.val is empty', '|', err.message);
-          log(`${err.idx} | insertValTaxon ERROR | gbifId:${err.val.taxonId} | error:${err.message}`, logStream);
-          if (dbUpdate) {
+          //log(`${err.idx} | insertValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, logStream, true);
+          //log(`${err.idx} | insertValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, errStream);
+          if (dbUpdate && Number(err.code)==23505) {
             updateValTaxon(err.val, err.idx)
               .then(upd => {
                 updCount++;
-                log(`${upd.idx} | updateValTaxon SUCCESS | gbifId:${upd.val.taxonId} | Updated:${updCount}`, logStream, true);
+                log(`${upd.idx} | updateValTaxon SUCCESS | taxonId:${upd.val.taxonId} | Updated:${updCount}`, logStream, true);
               })
               .catch(err => {
-                log(`${err.idx} | updateValTaxon ERROR | gbifId:${err.val.taxonId} | error:${err.message}`, logStream, true);
+                log(`${err.idx} | updateValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, logStream, true);
+                log(`${err.idx} | updateValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, errStream);
+                logErr(jsonToString(err.val), errStream);
               });
-          } //end if (dbUpdate)
+          } else { //end if (dbUpdate)
+            log(`${err.idx} | insertValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, logStream, true);
+            log(`${err.idx} | insertValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, errStream);
+            logErr(jsonToString(err.val), errStream);
+          }
         });
     } //end if (dbUpdate && dbInsert)
     if (dbUpdate && !dbInsert) {
@@ -245,9 +214,12 @@ function processResults(gbf, src) {
         })
         .catch(err => {
           log(`${err.idx} | updateValTaxon ERROR | gbifId:${err.val.taxonId} | error:${err.message}`, logStream, true);
+          log(`${err.idx} | updateValTaxon ERROR | gbifId:${err.val.taxonId} | error:${err.message}`, errStream);
+          logErr(jsonToString(err.val), errStream);
         });
     } //end if (dbUpdate && !dbInsert)
   } catch (err) {
+    console.log('processResults', err);
     log(`processResults ERROR | ${JSON.stringify(err)}`, logStream, true);
   } //end try(processResults)
 }
@@ -301,79 +273,6 @@ function matchGbifSpecies(src, idx) {
 }
 
 /*
-This endpoint returns an array of matches. We traverse that array, looking for
-a best match, initially defined as:
-
-ret.gbif:
-  - the first array element having taxonomicStatus==ACCEPTED, if one exists
-  overriding that:
-  - the first array element having taxonomicStatus==ACCEPTED and defined rank, if one exists
-
-ret.self:
-  - the first array element where GBIF:scientificName==SOURCE:scientificName, if one exists
-  overriding that:
-  - the first array element where GBIF:scientificName==SOURCE:scientificName and defined rank, if one exists
-
-*/
-function findGbifSpecies(src, idx) {
-  //var name = src.scientificName.trim();
-  var name = src.canonicalName.trim(); //species api works on canonicalName
-
-  var parms = {
-    url: `http://api.gbif.org/v1/species?name=${name}`,
-    json: true
-  };
-
-  return new Promise((resolve, reject) => {
-    Request.get(parms, (err, res, body) => {
-      if (err) {
-        err.src = src;
-        err.idx = idx;
-        reject(err);
-      } else {
-        var res = body.results?body.results:[];
-
-        if (res.length == 0) {
-          notCount++;
-          var err = {message:"No matching entries found."};
-          err.src = src;
-          err.idx = idx;
-          reject(err);
-        }
-
-        log(`findGbifSpecies(${src.canonicalName}) | ${res.statusCode} | ${res.length} Results. Searching for best match...`, logStream, true);
-
-        var acpt=-1, self=-1;
-        for (var i=0; i<res.length; i++) {
-          if (res[i].taxonomicStatus == 'ACCEPTED') {
-            if (acpt<0) {acpt=i;}
-            if (res[i].rank && !res[acpt].rank) {acpt=i;}
-          }
-          //select the gbif raw match to supplied taxon as 'self' - 1) sciName is equal, 2) there is a rank listed
-          //NOTE: this DOES NOT WORK YET for subspecies! ...because sciName contains var. variety, subsp. subspecies, ...
-          //FURTHER NOTE: I don't see how this works with sciName containing author?!
-          if (res[i].canonicalName == name) {
-            if (self<0) self=i; //this keeps the earliest valid result (prefer res[1] over res[2], all things being equal)
-            if (res[i].rank && !res[self].rank) {self=i;} //preferentially swap-in entries with defined RANK
-          }
-        }
-        //if an accepted name or self-match was found, return the first, most valid instance
-        //if no accepted name or self-match was found, return undefined for gbif or self
-        var ret = {};
-        ret.gbif = acpt<0?undefined:res[acpt];
-        ret.self = self<0?undefined:res[self];
-        log(`findGbifSpecies(${src.canonicalName}) |
-          ACCEPTED:${ret.gbif?ret.gbif.key:undefined} - ${ret.gbif?ret.gbif.scientificName:undefined} |
-          Self-status:${ret.self?ret.self.taxonomicStatus:undefined}`, logStream, true);
-        ret.src = src; //attach incoming source row-object to returned object for downstream use
-        ret.idx = idx; //attach incoming row index to returned object for downstream use
-        resolve(ret);
-      }
-    });
-  });
-}
-
-/*
 
 */
 function getGbifSpecies(gbf, src, idx) {
@@ -413,6 +312,8 @@ async function insertValTaxon(val, idx) {
   var qryColumns = pgUtil.parseColumns(val, 1, [], staticColumns);
   var sql_insert = `insert into val_species (${qryColumns.named}) values (${qryColumns.numbered}) returning "taxonId"`;
 
+  //console.log('insertValTaxon', sql_insert, qryColumns.values);
+
   return new Promise((resolve, reject) => {
     query(sql_insert, qryColumns.values)
       .then(res => {
@@ -431,18 +332,29 @@ async function insertValTaxon(val, idx) {
 /*
 Update the fixed-up val database object. On error, return the val object for
 downstream processing.
+
+NOTE: update of non-existent rows returns SUCCESS. we should filter those and
+return them as ERRORS.
 */
 async function updateValTaxon(val, idx) {
 
-  var qryColumns = pgUtil.parseColumns(val, 2, [val.gbifId], staticColumns);
-  var sql_update = `update val_species set (${qryColumns.named}) = (${qryColumns.numbered}) where "gbifId"=$1`;
+  var qryColumns = pgUtil.parseColumns(val, 2, [val.taxonId], staticColumns);
+  var sql_update = `update val_species set (${qryColumns.named}) = (${qryColumns.numbered}) where "taxonId"=$1 returning "taxonId"`;
+
+  //console.log('updateValTaxon', sql_update, qryColumns.values);
 
   return new Promise((resolve, reject) => {
     query(sql_update, qryColumns.values)
       .then(res => {
+        console.log('updateValTaxon', res.rows);
         res.val = val;
         res.idx = idx;
-        resolve(res);
+        if (res.rows[0]) {
+          resolve(res);
+        } else {
+          res.message = `val_species taxonId(${val.taxonId}) NOT Found`;
+          reject(res);
+        }
       })
       .catch(err => {
         err.val = val;
@@ -482,8 +394,7 @@ function writeResultToFile(val) {
 
   //loop through values. add double quotes if not there
   for (const key in val) {
-    //fld = val[key] || '';
-    fld = val[key]!=null?val[key]:''; //this is not tested on a large set of data
+    fld = val[key]!=null?val[key]:'';
     if (isNaN(fld)) { //check for null, numeric
       //check for leading and trailing double-quotes
       if (fld.substring(0,1) != `"` && fld.substring(fld.length-1,fld.length) != `"`) {
@@ -492,6 +403,7 @@ function writeResultToFile(val) {
     }
     out += fld + outputFileDelim;
   }
+
   //write output to file
   out = out.replace(/(^,)|(,$)/g, "");//remove leading, trailing delimiter
   log(`writeResultToFile | ${out}`, logStream);
@@ -499,6 +411,120 @@ function writeResultToFile(val) {
   outCount++;
 }
 
+/*
+Convert json object to object with string of column names and string of values.
+Returned as object, like {columns:'one,two,three', values:'1,2,3'}
+*/
+function jsonToString(obj) {
+  var vals = ''; //string of column values, delim-separated
+  var cols = ''; //string of column names, delim-separated
+
+  //loop through values. add double quotes if not there
+  for (const key in obj) {
+    fld = obj[key]!=null?obj[key]:'';
+    if (isNaN(fld)) { //check for null, numeric
+      //check for leading and trailing double-quotes
+      if (fld.substring(0,1) != `"` && fld.substring(fld.length-1,fld.length) != `"`) {
+        fld = `"${fld}"`;
+      }
+    }
+    vals += fld + outputFileDelim;
+    cols += key + outputFileDelim;
+  }
+  vals = vals.replace(/(^,)|(,$)/g, "");//remove leading, trailing delimiter
+  cols = cols.replace(/(^,)|(,$)/g, "");//remove leading, trailing delimiter
+
+  return {values:vals, columns:cols};
+}
+
+function logErr(obj, stream=null, override=true) {
+  if (errCount == 0) {
+    log(obj.columns, stream);
+  }
+  errCount++;
+  log(obj.values, stream, override);
+}
+
 function displayStats() {
   log(`total:${rowCount}|inserted:${insCount}|updated:${updCount}|output:${outCount}|not-found:${notCount}|errors:${errCount}`, logStream, true);
+}
+
+function valIngestNew(gbif, src) {
+  try {
+
+    var val = {gbifId:'',taxonId:'',scientificName:'',scientificNameAuthorship:'',
+    acceptedNameUsage:'',acceptedNameUsageId:'',taxonRank:'',taxonomicStatus:'',
+    parentNameUsage:'',parentNameUsageId:'',
+    specificEpithet:'',infraspecificEpithet:'',nomenclaturalCode:'',
+    vernacularName:'',taxonRemarks:'',
+    kingdom:'',kingdomId:'',phylum:'',phylumId:'',
+    class:'',classId:'',order:'',orderId:'',family:'',familyId:'',
+    genus:'',genusId:'',species:'',speciesId:''};
+
+    val.gbifId=0;
+    val.taxonId=src.taxonId || null;
+    val.scientificName=src.canonicalName || null; //scientificName often contains author. nameindexer cannot handle that, so remove it.
+    val.scientificNameAuthorship=src.scientificNameAuthorship || null;
+    val.acceptedNameUsage=src.acceptedNameUsage || (src.taxonomicStatus=='accepted'?src.scientificName:null);
+    val.acceptedNameUsageId=src.accpetedNameUsageId || (src.taxonomicStatus=='accepted'?src.taxonId:null);
+    val.taxonRank=src.taxonRank?src.taxonRank.toLowerCase():null;
+    val.parentNameUsage=src.parentNameUsage || null;
+    val.parentNameUsageId=src.parentNameUsageId || null; //can't be null - handle below
+
+    if (src.taxonRank && src.canonicalName) {
+      var rank = src.taxonRank;
+      var speciessub = src.canonicalName.split(" ").slice(); //break into tokens by spaces
+      val.genus = speciessub[0]; //this special for ingesting 'new' - override GBIF
+      val.species = speciessub[1]; //this special for ingesting 'new' - override GBIF
+      val.specificEpithet=rank=='species'?speciessub[1]:null;
+      val.infraspecificEpithet=rank=='subspecies'?speciessub[2]:null;
+      val.infraspecificEpithet=rank=='variety'?speciessub[2]:val.infraspecificEpithet; //don't overwrite previous on false...
+    }
+
+    val.nomenclaturalCode=src.nomenclaturalCode || 'VTSR'; //VTSR = VT Species Registry
+    val.vernacularName=src.vernacularName || null;
+    val.taxonRemarks=src.taxonRemarks || null;
+    val.taxonomicStatus=src.taxonomicStatus.toLowerCase() || null;
+
+    val.kingdom=gbif.kingdom?gbif.kingdom:src.kingdom;
+    val.kingdomId=gbif.kingdomKey?gbif.kingdomKey:src.kingdomId;;
+    val.phylum=gbif.phylum?gbif.phylum:src.phylum;
+    val.phylumId=gbif.phylumKey?gbif.phylumKey:src.phylumId;
+    val.class=gbif.class?gbif.class:src.class;
+  	val.classId=gbif.classKey?gbif.classKey:src.classId;
+    val.order=gbif.order?gbif.order:src.order;
+    val.orderId=gbif.orderKey?gbif.orderKey:src.orderId;
+    val.family=gbif.family?gbif.family:src.family;
+    val.familyId=gbif.familyKey?gbif.familyKey:src.familyId;
+
+    val.genus=val.genus?val.genus:null;
+    val.genusId=(val.genus==gbif.genus)?gbif.genusKey:null; //can't handle new genus yet
+
+    val.species=val.species?val.species:null;
+    val.speciesId=(val.species==gbif.species)?gbif.speciesKey:(val.taxonRank=='species'?val.taxonId:null);
+
+    if (!val.parentNameUsageId) {
+      switch(val.taxonRank) {
+        case 'species':
+          val.parentNameUsageId = val.genusId;
+          break;
+        case 'subspecies':
+        case 'variety':
+          val.parentNameUsageId = val.speciesId;
+          break;
+      }
+    }
+
+    //append items specific to our species index
+    val.datasetName=src.datasetName || null;
+    val.datasetId=src.datasetId || null;
+    val.bibliographicCitation=src.bibliographicCitation || null;
+    val.references=src.references || null;
+    val.institutionCode=src.institutionCode || null;
+    val.collectionCode=src.collectionCode || null;
+    val.establishmentMeans=src.establishmentMeans || null;
+  } catch(err) {
+    console.log('valIngestNew', err);
+  }
+    return val;
 }

@@ -12,11 +12,11 @@ var staticTypes = [];
 
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
 var baseName = 'Vermont_Conservation_Status';
-//var baseName = 'Vermont_Conservation_Missing';
+var baseName = 'Vermont_Conservation_Missing';
 var subDir = baseName + '/';
 var inpFileName = baseName + '.csv';
 var outFileName = 'test_out_' + inpFileName;
-var logFileName = 'test_log_' + moment().format('YYYYMMDD-HHMMSS') + '_' + inpFileName;
+var logFileName = 'test_log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
 var errFileName = 'test_err_' + inpFileName;
 var outStream = fs.createWriteStream(`${dataDir}${subDir}${outFileName}`, {flags: 'w'});
 var errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`, {flags: 'w'});
@@ -26,6 +26,7 @@ const outputFileDelim = ",";
 
 function test_parseSciName(src={scientificName:"Xestia (Pachnobia) homogena spp. heterogena"}) {
   console.log(parseSciName(src));
+  console.log(moment().format('YYYYMMDD-HHMMSSS'))
   process.exit();
 }
 test_parseSciName({scientificName:"Papaipema sp. 2 nr. pterisii"});
