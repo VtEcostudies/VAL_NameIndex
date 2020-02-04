@@ -27,15 +27,16 @@ var staticTypes = [];
 
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
 var baseName = 'Vermont_Conservation_Status';
-var baseName = 'Vermont_Conservation_Missing';
-var baseName = 'Vermont_Conservation_SGCN';
+//var baseName = 'Vermont_Conservation_Missing';
+//var baseName = 'Vermont_Conservation_SGCN';
 var subDir = baseName + '/';
 var inpFileName = baseName + '.csv';
+//var inpFileName = 'new_' + baseName + '.txt'; //special name for new, not-found values.
 var outFileName = 'val_' + inpFileName;
 var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
 var errFileName = 'err_' + inpFileName;
 
-const inputFileDelim = ",";
+const inputFileDelim = "\t";
 const outputFileDelim = ",";
 
 var rowCount = 0; //count records available

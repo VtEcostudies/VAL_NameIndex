@@ -31,8 +31,9 @@ var logFileName = 'get_insert_vernacular_names_' + moment().format('YYYYMMDD-HHM
 var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
-var offset = 100;
+var offset = 0;
 var limit = 25000;
+var where = '"createdAt"::date = now()::date';
 
 logStream = fs.createWriteStream(`${dataDir}/${logFileName}`, {flags: 'w'});
 
@@ -43,7 +44,7 @@ getColumns()
   .then(res => {
     getValTaxa()
       .then(async res => {
-        log(`${res.rowCount} val_species taxa | First row: ${res.rows[0]}`, logStream);
+        log(`${res.rowCount} val_species taxa | First row: ${JSON.stringify(res.rows[0])}`, logStream, true);
         for (var i=0; i<res.rowCount; i++) {
           log(`COUNT | ${offset+i}`, logStream, true);
           await getGbifVernacularNames(res.rows[i]) //use taxonId - a column returned from SELECT query
@@ -91,6 +92,7 @@ async function getValTaxa() {
   var text = '';
   text = `select s."taxonId", s."scientificName"
           from val_species s
+          where ${where}
           offset ${offset}
           limit ${limit}`;
 
@@ -98,6 +100,7 @@ async function getValTaxa() {
 }
 
 function getGbifVernacularNames(val) {
+
   var parms = {
     url: `http://api.gbif.org/v1/species/${val.taxonId}/vernacularNames?limit=1000`,
     json: true
@@ -109,14 +112,26 @@ function getGbifVernacularNames(val) {
         err.val = val;
         reject(err);
       } else {
-        log(`RESULT: getGbifVernacularNames(${val.taxonId}) | ${val.scientificName} | ${res.statusCode} | count: ${body.results.length}`, logStream);
-        body.val = val;
-        resolve(body);
+        if (body) {
+          log(`RESULT: getGbifVernacularNames(${val.taxonId}) | ${val.scientificName} | ${res.statusCode} | count: ${body?body.results.length:null}`, logStream);
+          body.val = val;
+          resolve(body);
+        } else {
+          var err = {message:`${val.taxonId} NOT Found.`, val:val};
+          reject(err)
+        }
       }
     });
   });
 }
 
+/*
+Vernacular Names are sometimes a list of values, comma-separated. Parse those here into multiple inserts.
+
+To-do: split multiple vernacular names into separate inserts.
+
+NOTE: this is currently handled after the fact in the DB with function vernacular_split_names().
+*/
 async function insertValVernacular(gbif, val) {
 
   try {

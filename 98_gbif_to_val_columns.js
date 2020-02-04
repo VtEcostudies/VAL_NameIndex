@@ -1,10 +1,33 @@
+module.exports.initValObject = initValObject;
+module.exports.gbifToValDirect = gbifToValDirect;
+module.exports.gbifToValIngest = gbifToValIngest;
+module.exports.getParentKeyFromTreeKeys = getParentKeyFromTreeKeys;
+
+function initValObject() {
+
+  var val = {
+    gbifId:'',taxonId:'',scientificName:'',scientificNameAuthorship:'',
+    acceptedNameUsage:'',acceptedNameUsageId:'',taxonRank:'',taxonomicStatus:'',
+    parentNameUsage:'',parentNameUsageId:'',
+    specificEpithet:'',infraspecificEpithet:'',nomenclaturalCode:'',
+    vernacularName:'',taxonRemarks:'',
+    kingdom:'',kingdomId:'',phylum:'',phylumId:'',
+    class:'',classId:'',order:'',orderId:'',family:'',familyId:'',
+    genus:'',genusId:'',species:'',speciesId:'',
+    datasetName:'',datasetId:'',bibliographicCitation:'',references:'',
+    institutionCode:'',collectionCode:'',establishmentMeans:''
+    };
+
+    return val;
+}
+
 /*
 Convert gbif fields to val_species columns for output file and ingestion into
 val_species database table.
 */
 function gbifToValDirect(gbif) {
 
-  var val = {};
+  var val = initValObject();
 
   if (gbif.canonicalName) {
     var rank = gbif.rank?gbif.rank.toLowerCase():undefined;
@@ -68,7 +91,7 @@ additional val_species columns, if present in the incoming dataset.
 */
 function gbifToValIngest(gbif, src) {
 
-  var val = {};
+  var val = initValObject();
 
   if (src.id) {val.id=src.id;} //spit this back out for incoming DwCA that use it to map val_taxon.txt to other incoming dwca extensions
 
@@ -156,7 +179,3 @@ function getParentKeyFromTreeKeys(gbif) {
 
   return parentId;
 }
-
-module.exports.gbifToValDirect = gbifToValDirect;
-module.exports.gbifToValIngest = gbifToValIngest;
-module.exports.getParentKeyFromTreeKeys = getParentKeyFromTreeKeys;

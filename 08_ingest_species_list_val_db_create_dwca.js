@@ -61,22 +61,22 @@ const gbifToValIngest = require('./98_gbif_to_val_columns').gbifToValIngest;
 const addCanonicalName = require('./97_utilities').addCanonicalName;
 const addTaxonRank = require('./97_utilities').addTaxonRank;
 const log = require('./97_utilities').log;
-const logErr = require('./97_utilities').logErr;
+const jsonToString = require('./97_utilities').jsonToString;
 
-const inputFileDelim = ",";
-const outputFileDelim = ",";
+const inpFileDelim = ",";
+const outFileDelim = ",";
 
 var staticColumns = [];
 
 console.log(`config paths: ${JSON.stringify(paths)}`);
 
 var dataDir = paths.dataDir; //path to directory holding source data files - INCLUDING TRAILING SLASH
-var baseName = '';
+var baseName = 'empty';
 //baseName = 'spidersVTlist';
 //baseName = 'WhirligigBeetles';
 //baseName = 'BombusChecklist';
 //baseName= 'CicadaVermont';
-//baseName= 'Orthoptera_Vermont';
+baseName= 'Orthoptera_Vermont';
 //baseName= 'Ticks_Vermont';
 //baseName= 'Spiders_Vermont';
 //baseName= 'Amphibian_Reptile_Vermont';
@@ -91,21 +91,22 @@ var baseName = '';
 //baseName = 'Error_Corrections';
 //baseName = 'Springtails_VT';
 //baseName = 'Bryophytes_VT';
-baseName = 'Vermont_Conservation_Missing'; //the not-found taxa from adding Vermont_Conservation_Status
+//baseName = 'Vermont_Conservation_Missing'; //the not-found taxa from adding Vermont_Conservation_Status
 
 var subDir = baseName + '/';
 
-if (inputFileDelim == ",") {
+if (inpFileDelim == ",") {
   inpFileName = baseName + '.csv';
-} else if (inputFileDelim == '\t') {
+} else if (inpFileDelim == '\t') {
   inpFileName = baseName + '.txt';
 }
+//inpFileName = 'fix_' + inpFileName; //use this to handle small update files in the same directory
 var outFileName = 'val_' + inpFileName;
 var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
 var errFileName = 'err_' + inpFileName;
 
 //Don't create outStream here. Empty outStream flags writing header to file.
-//var outStream = fs.createWriteStream(`${dataDir}${subDir}${outFileName}`);
+var outStream = null;
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`);
 var errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`);
 
@@ -117,7 +118,7 @@ var updCount = 0; //count records updated
 var notCount = 0; //count records NOT found
 var errCount = 0; //count record errors
 
-var dbInsert = 0;
+var dbInsert = 1;
 var dbUpdate = 0;
 
 process.on('exit', function(code) {
@@ -151,7 +152,7 @@ getColumns()
                 */
                 rankMatch = gbf.rank.toLowerCase()==gbf.src.taxonRank.toLowerCase();
                 if (!rankMatch) {
-                  log(`taxonRank mismatch|source:${gbf.src.taxonRank.toLowerCase()}|gbif:${gbf.rank.toLowerCase()}`, logStream, true);
+                  log(`${gbf.idx} | taxonRank mismatch|source:${gbf.src.taxonRank.toLowerCase()}|gbif:${gbf.rank.toLowerCase()}`, logStream, true);
                 }
               }
               if (gbf.results && rankMatch) { //found a match - EXACT or FUZZY?
@@ -159,8 +160,9 @@ getColumns()
                 //getGbifSpecies(gbf, gbf.src, gbf.idx)
                   .then((res) => {processResults(res, res.src);})
                   .catch((err) => {
-                    log(`getGbifSpecies ERROR | ${err.src.scientificName} | ${JSON.stringify(err)}`, logStream, true);
-                    log(err.src.scientificName, errStream);
+                    log(`${err.idx} | getGbifSpecies ERROR | ${err.src.scientificName} | ${JSON.stringify(err)}`, logStream, true);
+                    //log(err.src.scientificName, errStream);
+                    logErr(jsonToString(err.src, outFileDelim, errStream), errStream);
                   });
               } else { //empty or incorrect result - try to find the source object another way
                 await findGbifSpecies(gbf.src, gbf.idx)
@@ -169,14 +171,16 @@ getColumns()
                       processResults(res.self, res.src);
                   })
                   .catch(err => {
-                    log(`findGbifSpecies ERROR | ${err.src.scientificName} | ${JSON.stringify(err)}`, logStream, true);
-                    log(err.src.scientificName, errStream)
+                    log(`${err.idx} | findGbifSpecies ERROR | ${err.src.scientificName} | ${JSON.stringify(err)}`, logStream, true);
+                    //log(err.src.scientificName, errStream);
+                    logErr(jsonToString(err.src, outFileDelim, errStream), errStream, true);
                   })
                 } //end else
               })
             .catch((err) => {
-              log(`matchGbifSpecies ERROR | ${err.src.scientificName} | ${JSON.stringify(err)}`, logStream, true);
-              log(err.src.scientificName, errStream)
+              log(`${err.idx} | matchGbifSpecies ERROR | ${err.src.scientificName} | ${JSON.stringify(err)}`, logStream, true);
+              //log(err.src.scientificName, errStream);
+              logErr(jsonToString(err.src, outFileDelim, errStream), errStream);
             });
         } //end for loop
       })
@@ -198,7 +202,7 @@ Parse the input file into a 2D array for processing.
 */
 async function getSpeciesFile(inpFileName) {
   try {
-    return await csvFileTo2DArray(inpFileName, inputFileDelim, headRow, true);
+    return await csvFileTo2DArray(inpFileName, inpFileDelim, headRow, true);
   } catch(err) {
     throw(err);
   }
@@ -279,12 +283,11 @@ function matchGbifSpecies(src, idx) {
     Request.get(parms, (err, res, body) => {
       if (err) {
         log(`matchGbifSpecies | err.code: ${err.code}`, errStream);
-        src.err = {"code":err.code, "func":"matchGbifSpecies"};
         err.src = src;
         err.idx = idx;
         reject(err);
       } else {
-        log(`matchGbifSpecies(${src.scientificName}) | ${res.statusCode} | ${body.usageKey?1:0} results found.`, logStream, true);
+        log(`${idx} | matchGbifSpecies(${src.scientificName}) | ${res.statusCode} | ${body.usageKey?1:0} results found.`, logStream, true);
         /*
         log(`matchGbifSpecies RESULT:
           GBIF RANK:${body.rank.toLowerCase()}
@@ -316,7 +319,6 @@ ret.self:
 
 */
 function findGbifSpecies(src, idx) {
-  //var name = src.scientificName.trim();
   var name = src.canonicalName.trim(); //species api works on canonicalName
 
   var parms = {
@@ -327,6 +329,7 @@ function findGbifSpecies(src, idx) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err) {
+        log(`findGbifSpecies | err.code: ${err.code}`, errStream);
         err.src = src;
         err.idx = idx;
         reject(err);
@@ -340,34 +343,35 @@ function findGbifSpecies(src, idx) {
           err.idx = idx;
           reject(err);
         }
+        else {
+          log(`${idx} | findGbifSpecies(${src.canonicalName}) | ${res.statusCode} | ${res.length} Results. Searching for best match...`, logStream, true);
 
-        log(`findGbifSpecies(${src.canonicalName}) | ${res.statusCode} | ${res.length} Results. Searching for best match...`, logStream, true);
-
-        var acpt=-1, self=-1;
-        for (var i=0; i<res.length; i++) {
-          if (res[i].taxonomicStatus == 'ACCEPTED') {
-            if (acpt<0) {acpt=i;}
-            if (res[i].rank && !res[acpt].rank) {acpt=i;}
+          var acpt=-1, self=-1;
+          for (var i=0; i<res.length; i++) {
+            if (res[i].taxonomicStatus == 'ACCEPTED') {
+              if (acpt<0) {acpt=i;}
+              if (res[i].rank && !res[acpt].rank) {acpt=i;}
+            }
+            //select the gbif raw match to supplied taxon as 'self' - 1) sciName is equal, 2) there is a rank listed
+            //NOTE: this DOES NOT WORK YET for subspecies! ...because sciName contains var. variety, subsp. subspecies, ...
+            //FURTHER NOTE: I don't see how this works with sciName containing author?!
+            if (res[i].canonicalName == name) {
+              if (self<0) self=i; //this keeps the earliest valid result (prefer res[1] over res[2], all things being equal)
+              if (res[i].rank && !res[self].rank) {self=i;} //preferentially swap-in entries with defined RANK
+            }
           }
-          //select the gbif raw match to supplied taxon as 'self' - 1) sciName is equal, 2) there is a rank listed
-          //NOTE: this DOES NOT WORK YET for subspecies! ...because sciName contains var. variety, subsp. subspecies, ...
-          //FURTHER NOTE: I don't see how this works with sciName containing author?!
-          if (res[i].canonicalName == name) {
-            if (self<0) self=i; //this keeps the earliest valid result (prefer res[1] over res[2], all things being equal)
-            if (res[i].rank && !res[self].rank) {self=i;} //preferentially swap-in entries with defined RANK
-          }
+          //if an accepted name or self-match was found, return the first, most valid instance
+          //if no accepted name or self-match was found, return undefined for gbif or self
+          var ret = {};
+          ret.gbif = acpt<0?undefined:res[acpt];
+          ret.self = self<0?undefined:res[self];
+          log(`findGbifSpecies(${src.canonicalName}) |
+            ACCEPTED:${ret.gbif?ret.gbif.key:undefined} - ${ret.gbif?ret.gbif.scientificName:undefined} |
+            Self-status:${ret.self?ret.self.taxonomicStatus:undefined}`, logStream, true);
+          ret.src = src; //attach incoming source row-object to returned object for downstream use
+          ret.idx = idx; //attach incoming row index to returned object for downstream use
+          resolve(ret);
         }
-        //if an accepted name or self-match was found, return the first, most valid instance
-        //if no accepted name or self-match was found, return undefined for gbif or self
-        var ret = {};
-        ret.gbif = acpt<0?undefined:res[acpt];
-        ret.self = self<0?undefined:res[self];
-        log(`findGbifSpecies(${src.canonicalName}) |
-          ACCEPTED:${ret.gbif?ret.gbif.key:undefined} - ${ret.gbif?ret.gbif.scientificName:undefined} |
-          Self-status:${ret.self?ret.self.taxonomicStatus:undefined}`, logStream, true);
-        ret.src = src; //attach incoming source row-object to returned object for downstream use
-        ret.idx = idx; //attach incoming row index to returned object for downstream use
-        resolve(ret);
       }
     });
   });
@@ -388,13 +392,12 @@ function getGbifSpecies(gbf, src, idx) {
     Request.get(parms, (err, res, body) => {
       if (err) {
         log(`getGbifSpecies|err.code: ${err.code}`, errStream);
-        src.err = {"code":err.code, "func":"getGbifSpecies"};
         err.gbf = gbf;
         err.src = src;
         err.idx = idx;
         reject(err);
       } else {
-        log(`getGbifSpecies(${gbf.scientificName}) | ${res.statusCode} | gbifKey:${body.key?key:undefined}`, logStream, true);
+        log(`${idx} | getGbifSpecies(${gbf.scientificName}) | ${res.statusCode} | gbifKey:${body.key?key:undefined}`, logStream, true);
         body.gbf = gbf;
         body.src = src; //attach incoming gbif row-object to returned object for downstream use
         body.idx = idx; //attach incoming row index to returned object for downstream use
@@ -461,7 +464,7 @@ function writeHeaderToFile(val) {
 
   for (i=0; i<arr.length; i++) {
     out += arr[i];
-    if (i < (arr.length-1)) out += outputFileDelim;
+    if (i < (arr.length-1)) out += outFileDelim;
   }
 
   outStream.write(`${out}\n`);
@@ -490,13 +493,25 @@ function writeResultToFile(val) {
         fld = `"${fld}"`;
       }
     }
-    out += fld + outputFileDelim;
+    out += fld + outFileDelim;
   }
   //write output to file
   out = out.replace(/(^,)|(,$)/g, "");//remove leading, trailing delimiter
   log(`writeResultToFile | ${out}`, logStream);
   outStream.write(`${out}\n`);
   outCount++;
+}
+
+function logErr(obj, stream=null, override=true) {
+  try {
+    if (errCount == 0) {
+      log(obj.columns, stream);
+    }
+    errCount++;
+    log(obj.values, stream, override);
+  } catch(err) {
+    console.log('logErr ERROR', err);
+  }
 }
 
 function displayStats() {

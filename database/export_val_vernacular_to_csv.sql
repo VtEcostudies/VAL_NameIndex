@@ -1,13 +1,14 @@
 --NOTE: pg just needs permissions to write to the specified folder. chmod 777 \dir\subdir.
-copy val_conservation_status(
+copy val_vernacular(
 "taxonId",
 "scientificName",
-"SGCN",
-"stateRank",
-"stateList",
-"globalRank",
-"federalList"
+"vernacularName",
+"lifeStage",
+"sex",
+"language",
+"countryCode",
+"source"
 )
-to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_conservation_status.csv' 
+to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_vernacular.csv' 
 delimiter ','
 csv header

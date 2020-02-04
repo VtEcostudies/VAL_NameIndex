@@ -52,8 +52,9 @@ const csvFileTo2DArray = require('./99_parse_csv_to_array').csvFileTo2DArray;
 const addCanonicalName = require('./97_utilities').addCanonicalName;
 const addTaxonRank = require('./97_utilities').addTaxonRank;
 const log = require('./97_utilities').log;
+const initValObject = require('./98_gbif_to_val_columns').initValObject;
 
-const inputFileDelim = "\t";
+const inputFileDelim = ",";
 const outputFileDelim = ",";
 
 var staticColumns = [];
@@ -63,16 +64,17 @@ console.log(`config paths: ${JSON.stringify(paths)}`);
 var dataDir = paths.dataDir; //path to directory holding source data files - INCLUDING TRAILING SLASH
 var baseName = '';
 baseName = 'Vermont_Conservation_Missing'; //the not-found taxa from adding Vermont_Conservation_Status
+baseName = 'Springtails_VT';
 
 var subDir = baseName + '/';
-var inpFileName = 'new_' + baseName + '.txt';
+var inpFileName = 'new_' + baseName + '.csv'; //only apply not-found taxa from files prefixed with 'new_'
 var outFileName = 'val_' + inpFileName;
 var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
 var errFileName = 'err_' + inpFileName;
 
 //Don't create outStream here. Empty outStream flags writing header to file.
-var outStream = null;
 //var outStream = fs.createWriteStream(`${dataDir}${subDir}${outFileName}`);
+var outStream = null;
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`);
 var errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`);
 
@@ -85,7 +87,7 @@ var notCount = 0; //count records NOT found
 var errCount = 0; //count record errors
 
 var dbInsert = 1;
-var dbUpdate = 1; //BE CAREFUL - we use our own taxonIds in here. If you dont guarantee unique, you'll overwrite!
+var dbUpdate = 0; //BE CAREFUL - we use our own taxonIds in here. If you dont guarantee unique, you'll overwrite!
 
 process.on('exit', function(code) {
   displayStats();
@@ -99,7 +101,7 @@ getColumns()
         log(`Input file rowCount:${src.rowCount} | Header:${src.header}`);
         rowCount = src.rows.length;
         for (var i=0; i<src.rows.length; i++) {
-          if (!src.rows[i].action || src.rows[i].action == 'delete') {log(`skipping ${src.rows[i].scientificName}`, logStream, true); continue;}
+          if (src.rows[i].action == 'delete') {log(`skipping ${src.rows[i].scientificName}`, logStream, true); continue;}
           await addCanonicalName(src.rows[i], logStream); //parse scientificName into canonicalName and add to src object
           await matchGbifSpecies(src.rows[i], i)
             .then(async (gbf) => {
@@ -138,7 +140,7 @@ getColumns()
             .catch((err) => {
               log(`matchGbifSpecies ERROR | ${err.src.scientificName} | ${JSON.stringify(err)}`, logStream, true);
               log(`${err.idx} | matchGbifSpecies ERROR | gbifId:${err.src.taxonId} | error:${err.message}`, errStream);
-              logErr(jsonToString(err.src), errStream);
+              logErr(jsonToString(err.src,outputFileDelim,errStream), errStream);
             });
         } //end for loop
       })
@@ -412,7 +414,9 @@ function writeResultToFile(val) {
 }
 
 /*
-Convert json object to object with string of column names and string of values.
+Convert json object to object with:
+  columns: string of column names, separated by outputFileDelim
+  values: string of values, separated by outputFileDelim
 Returned as object, like {columns:'one,two,three', values:'1,2,3'}
 */
 function jsonToString(obj) {
@@ -452,21 +456,14 @@ function displayStats() {
 function valIngestNew(gbif, src) {
   try {
 
-    var val = {gbifId:'',taxonId:'',scientificName:'',scientificNameAuthorship:'',
-    acceptedNameUsage:'',acceptedNameUsageId:'',taxonRank:'',taxonomicStatus:'',
-    parentNameUsage:'',parentNameUsageId:'',
-    specificEpithet:'',infraspecificEpithet:'',nomenclaturalCode:'',
-    vernacularName:'',taxonRemarks:'',
-    kingdom:'',kingdomId:'',phylum:'',phylumId:'',
-    class:'',classId:'',order:'',orderId:'',family:'',familyId:'',
-    genus:'',genusId:'',species:'',speciesId:''};
+    var val = initValObject();
 
     val.gbifId=0;
     val.taxonId=src.taxonId || null;
     val.scientificName=src.canonicalName || null; //scientificName often contains author. nameindexer cannot handle that, so remove it.
     val.scientificNameAuthorship=src.scientificNameAuthorship || null;
     val.acceptedNameUsage=src.acceptedNameUsage || (src.taxonomicStatus=='accepted'?src.scientificName:null);
-    val.acceptedNameUsageId=src.accpetedNameUsageId || (src.taxonomicStatus=='accepted'?src.taxonId:null);
+    val.acceptedNameUsageId=src.acceptedNameUsageId || (src.taxonomicStatus=='accepted'?src.taxonId:null);
     val.taxonRank=src.taxonRank?src.taxonRank.toLowerCase():null;
     val.parentNameUsage=src.parentNameUsage || null;
     val.parentNameUsageId=src.parentNameUsageId || null; //can't be null - handle below
