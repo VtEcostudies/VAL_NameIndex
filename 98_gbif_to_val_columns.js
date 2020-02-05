@@ -162,7 +162,9 @@ function gbifToValIngest(gbif, src) {
 
 
 function getParentKeyFromTreeKeys(gbif) {
-  var parentId = 0;
+  var parentId = null;
+
+  if (!gbif.rank) {return null;}
 
   //parentNameUsageID is key of next higher rank (except for kingdom, which is itself)
   switch(gbif.rank.toLowerCase()) {

@@ -76,7 +76,7 @@ var baseName = 'empty';
 //baseName = 'WhirligigBeetles';
 //baseName = 'BombusChecklist';
 //baseName= 'CicadaVermont';
-baseName= 'Orthoptera_Vermont';
+//baseName= 'Orthoptera_Vermont';
 //baseName= 'Ticks_Vermont';
 //baseName= 'Spiders_Vermont';
 //baseName= 'Amphibian_Reptile_Vermont';
@@ -92,6 +92,7 @@ baseName= 'Orthoptera_Vermont';
 //baseName = 'Springtails_VT';
 //baseName = 'Bryophytes_VT';
 //baseName = 'Vermont_Conservation_Missing'; //the not-found taxa from adding Vermont_Conservation_Status
+//baseName= 'Cluster_Flies_Vermont';
 
 var subDir = baseName + '/';
 

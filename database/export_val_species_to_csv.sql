@@ -29,6 +29,6 @@ copy val_species(
     "institutionCode",
     "collectionCode"
 )
-to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_species_pg_export.csv' 
+to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_species.csv' 
 delimiter ','
 csv header

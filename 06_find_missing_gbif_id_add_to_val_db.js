@@ -73,13 +73,13 @@ getColumns()
                 })
                 .catch(err => {
                   errCount++;
-                  log(`insertValTaxon ERROR ${errCount} | gbifId:${err.val.taxonId} | error:${err.message}`, logStream, true);
-                  log(`${err.gbif.key}|${err.gbif.scientificName}`, errStream, true);
+                  log(`insertValTaxon ERROR ${errCount} | gbifId:${err.key} | error:${err.message}`, logStream, true);
+                  log(`${err.key}`, errStream, true);
                 })
             })
             .catch(err => {
               errCount++;
-              log(`getGbifSpecies ERROR ${errCount} | ${err.message}`, logStream, true);
+              log(`getGbifSpecies ERROR ${errCount} | gbifId:${err.key} | ${err.message}`, logStream, true);
               log(`${err.key}`, errStream, true);
             })
         }
@@ -182,9 +182,15 @@ function getGbifSpecies(key) {
         err.key = key;
         reject(err);
       } else {
-        log(`getGbifSpecies(${key}) | ${res.statusCode}`);
-        body.key = key;
-        resolve(body);
+        if (body && body.key) {
+          log(`getGbifSpecies(${key}) | ${res.statusCode} | gbifId: ${body.key}`);
+          body.key = key;
+          resolve(body);
+        } else {
+          var err = {message:`${key} NOT Found`};
+          err.key = key;
+          reject(err);
+        }
       }
     });
   });
@@ -192,9 +198,11 @@ function getGbifSpecies(key) {
 
 async function insertValTaxon(gbif) {
   //translate gbif api values to val columns
-  log(`taxonId = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`, logStream);
+  log(`insertValTaxon | taxonId = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`, logStream, true);
 
   var val = gbifToValDirect(gbif);
+
+  //console.log('insertValTaxon', val);
 
   var queryColumns = pgUtil.parseColumns(val, 1, [], staticColumns);
   const text = `insert into val_species (${queryColumns.named}) values (${queryColumns.numbered}) returning "taxonId"`;

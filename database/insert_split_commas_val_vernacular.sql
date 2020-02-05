@@ -29,7 +29,7 @@ INSERT INTO val_vernacular ("taxonId","scientificName","vernacularName","lifeSta
 	SELECT "taxonId","scientificName",TRIM(split_part("vernacularName", ' & ', 2)),"lifeStage","sex","language","countryCode","source"
 	FROM val_vernacular 
 	WHERE "vernacularName" LIKE '% & %' 
-	AND split_part("vernacularName", ' & ', 2) <> ''
+	AND split_part("vernacularName", ' & ', 2) != ''
 ON CONFLICT("taxonId", "vernacularName") DO NOTHING;
 
 
@@ -39,7 +39,7 @@ INSERT INTO val_vernacular ("taxonId","scientificName","vernacularName","lifeSta
 	SELECT "taxonId","scientificName",TRIM(split_part("vernacularName", ' and ', 2)),"lifeStage","sex","language","countryCode","source"
 	FROM val_vernacular 
 	WHERE "vernacularName" LIKE '% and %' 
-	AND split_part("vernacularName", ' and ', 2) <> ''
+	AND split_part("vernacularName", ' and ', 2) != ''
 ON CONFLICT("taxonId", "vernacularName") DO NOTHING;
 
 RETURN 'DONE';
