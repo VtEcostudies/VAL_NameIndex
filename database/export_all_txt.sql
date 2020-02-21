@@ -29,4 +29,29 @@ copy (select
     "institutionCode",
     "collectionCode"
 	from val_species)
-to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_species.csv' delimiter ',' csv header;
+to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_species.txt' with NULL '';
+
+copy (select
+"taxonId",
+"taxonId",
+"scientificName",
+"vernacularName",
+"lifeStage",
+"sex",
+"language",
+"countryCode",
+"source"
+from val_vernacular)
+to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_vernacular.txt' with NULL '';
+
+copy (select
+"taxonId",
+"taxonId",
+"scientificName",
+"SGCN",
+"stateRank",
+"stateList",
+"globalRank",
+"federalList"
+from val_conservation_status)
+to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_conservation_status.txt' with NULL '';

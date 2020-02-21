@@ -40,8 +40,8 @@
 	<field index="3" term="http://rs.tdwg.org/dwc/terms/vernacularName"/>
 	<field index="4" term="http://rs.tdwg.org/dwc/iri/lifeStage"/>
 	<field index="5" term="http://rs.tdwg.org/dwc/iri/sex"/>
-	<field index="6" term="http://rs.tdwg.org/dwc/terms/countryCode"/>
-	<field index="7" term="http://purl.org/dc/terms/language"/>
+	<field index="6" term="http://purl.org/dc/terms/language"/>
+	<field index="7" term="http://rs.tdwg.org/dwc/terms/countryCode"/>
 	<field index="8" term="http://purl.org/dc/terms/source"/>
   </extension>
-</archive>  
+</archive>

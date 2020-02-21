@@ -73,14 +73,14 @@ getColumns()
                 })
                 .catch(err => {
                   errCount++;
-                  log(`insertValTaxon ERROR ${errCount} | gbifId:${err.key} | error:${err.message}`, logStream, true);
-                  log(`${err.key}`, errStream, true);
+                  log(`insertValTaxon ERROR ${errCount} | gbifId:${err.gbif.key} | error:${err.message}`, logStream, true);
+                  log(`${err.gbif.key} | ${err.message}`, errStream, true);
                 })
             })
             .catch(err => {
               errCount++;
               log(`getGbifSpecies ERROR ${errCount} | gbifId:${err.key} | ${err.message}`, logStream, true);
-              log(`${err.key}`, errStream, true);
+              log(`${err.key} | ${err.message}`, errStream, true);
             })
         }
       })
@@ -201,8 +201,6 @@ async function insertValTaxon(gbif) {
   log(`insertValTaxon | taxonId = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`, logStream, true);
 
   var val = gbifToValDirect(gbif);
-
-  //console.log('insertValTaxon', val);
 
   var queryColumns = pgUtil.parseColumns(val, 1, [], staticColumns);
   const text = `insert into val_species (${queryColumns.named}) values (${queryColumns.numbered}) returning "taxonId"`;
