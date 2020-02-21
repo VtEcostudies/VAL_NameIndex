@@ -62,11 +62,12 @@ function test_getConservationNames() {
   getConservationNames('S3B,S4N');
   getConservationNames('S5B,S4N');
   getConservationNames('SNRB');
-  getConservationNames('NNR?');
+  getConservationNames('SNR?');
   getConservationNames('S1S2B');
   getConservationNames('SNAN');
   getConservationNames('S1B,SNAN');
   getConservationNames('N1?');
+  getConservationNames('S1B,S2M,N3B');
   process.exit();
 }
 if (test) test_getConservationNames();
@@ -112,17 +113,19 @@ async function getConservationStatusFile(inpFileName) {
   }
 }
 
-async function getConservationNames(Rs) {
+function getConservationNames(Rs) {
   try {
-    var Ra = Rs.split(',').slice();
-    var Ns = '';
+    var Ra = Rs.split(',').slice(); //Rank Code String to Rank Code Array
+    var Ro = {}; //Rank Result Object from conversion of Code to Text and Tokens
+    var Rt = ''; //Rank Text String
     if (test) console.log(`${Ra.length}:`,Ra);
     for (var i=0; i<Ra.length; i++) {
       if (test) console.log(i, Ra[i]);
-      Ns += getConservationName(Ra[i]);
-      if (i<Ra.length-1) Ns += ', ';
+      Ro = getConservationName(Ra[i], i, Ro.sId); //pass the previous Scope Id for comparison
+      Rt += Ro.text;
+      if (i<Ra.length-1) Rt += ', ';
     }
-    console.log(Rs, '==>', Ns);
+    console.log(Rs, '==>', Rt);
   } catch(err) {
     console.log('getConservationNames', err);
     return null;
@@ -130,8 +133,11 @@ async function getConservationNames(Rs) {
 }
 /*
   Parse a single Conservation Rank into tokens and build Conservation Status Name from them.
+  sR: incoming Rank Code - a single, parsed code (eg. N1?) from code string (eg. N1?,N2N3B)
+  nR: numeric position (eg. 1) of this Rank Code (eg. S2M) within a series of Rank Codes (ie. S1B,S2M,N3B)
+  pS: previous Scope value (eg. S), if there was one for a series of Rank Codes (ie. S1B,S2M,N3B)
 */
-function getConservationName(sR) {
+function getConservationName(sR, nR=0, pS=null) {
   try {
     //we can assume that, since this is stateRank, the tokens will all begin with 'S'
     var sId=null; //scope id
@@ -140,10 +146,10 @@ function getConservationName(sR) {
     var qId=null; //qualifier id
     var reg=null; //regular expresssion
 
-    sId=sR.charAt(0); //scope is always the 1st char
+    sId=sR.charAt(0); //Scope is always the 1st character
 
     //test for Range Rank (always Numeric) (S#S# or N#N#) with Qualifier
-    reg = /(\b.\d.\d.\b)/g;
+    reg = /(^[GNS][12345][GNS][12345][BNM?]$)/g;
     if (reg.test(sR)) {
       if (test) console.log(reg);
       lId=sR.charAt(1);
@@ -151,55 +157,57 @@ function getConservationName(sR) {
       qId=sR.charAt(4);
     }
     //test for Range Rank (always Numeric) (S#S# or N#N#) w/o Qualifier
-    reg = /(\b.\d.\d\b)/g;
+    reg = /(^[GNS][12345][GNS][12345]$)/g;
     if (reg.test(sR)) {
       if (test) console.log(reg);
       lId=sR.charAt(1);
       rId=sR.charAt(3);
     }
     //test for Single Value Rank with Qualifier (eg. S3B, N1?, SXN)
-    reg = /(\b.\d.\b)|(\b.\X.\b)|(\b.\H.\b)|(\b.\U.\b)|(\b.\d?\b)/;
+    reg = /(^[GNS][XH12345U][BNM?]$)/g;
     if (reg.test(sR)) {
       if (test) console.log(reg);
       lId=sR.charAt(1);
       qId=sR.charAt(2);
     }
     //test for Single Value Rank w/o Qualifier (eg. S3, SH)
-    reg = /(\b.\d\b)|(\b.\X\b)|(\b.\H\b)|(\b.\U\b)/;
+    reg = /(^[GNS][XH12345U]$)/g;
     if (reg.test(sR)) {
       if (test) console.log(reg);
       lId=sR.charAt(1);
     }
-    //test for Double Letter Rank with Qualifier (eg. SNRB)
-    reg = /(\b.\N\R.\b)|(\b.\N\R?\b)|(\b.\N\A.\b)|(\b.\N\A?\b)/;
+    //test for Double Letter Rank with Qualifier (eg. SNRB, SNA?)
+    reg = /(^[GNS]N[AR][BNM?]$)/g;
     if (reg.test(sR)) {
       if (test) console.log(reg);
       lId=sR.substr(1,2); //ie. 'NR'
       qId=sR.charAt(3);
     }
     //test for Double Letter Rank w/o Qualifier (eg. NNR)
-    reg = /(\b.\N\R\b)|(\b.\N\A\b)/;
+    reg = /(^[GNS]N[AR]$)/g;
     if (reg.test(sR)) {
       if (test) console.log(reg);
       lId=sR.substr(1,2); //ie. 'NR'
     }
 
-    var sName = scope[sId].name + ' Rank: ';
+    var rName = '';
+    if (test) console.log(`nR:${nR} | pS:${pS} | sId:${sId}`);
+    if (nR == 0 || sId != pS) {rName += scope[sId].name + ' Rank: ';}
     if (rId) {
       //console.log('rId', rId);
-      if (level[rId]) sName += `${level[lId].name} ~ ${level[rId].name}`;
+      if (level[rId]) rName += `${level[lId].name} ~ ${level[rId].name}`;
     } else if (lId) {
       //console.log('lId', lId);
-      if (level[lId]) sName += level[lId].name;
+      if (level[lId]) rName += level[lId].name;
     }
     if (qId) {
       //console.log('qId:', qId);
-      if (qualifier[qId]) sName += ` (${qualifier[qId].name})`;
+      if (qualifier[qId]) rName += ` (${qualifier[qId].name})`;
     }
 
-    if (test) console.log('getConservationName | ', sR, '|', sName);
+    if (test) console.log('getConservationName | ', sR, '|', rName);
 
-    return sName;
+    return {text:rName, sId:sId, lId:lId, rId:rId, qId:qId};
   } catch(err) {
     console.log(`getConservationName(${sR}) ERROR | `, err);
     return null;
