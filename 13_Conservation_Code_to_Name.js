@@ -1,3 +1,18 @@
+/*
+  Author: Jason Loomis
+
+  Project: VAL_Species
+
+  File: 13_Conservation_Code_to_Name.js
+
+  Purpose: Process Conservation Status codes into readable text for display.
+
+  Specifics:
+
+  - Perform conversion
+  - add a column containing the result to the incoming file and output as newly-
+  named file.
+*/
 var fs = require('fs');
 var Request = require("request");
 var moment = require('moment');
@@ -11,28 +26,33 @@ var staticColumns = [];
 var staticTypes = [];
 
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
-var baseName = 'Vermont_Conservation_Status';
+dataDir = 'C:/Users/jloomis/Documents/VCE/VAL_NameIndex/repo/database/export/conservation';
+//var baseName = 'Vermont_Conservation_Status';
 //var baseName = 'Vermont_Conservation_Missing';
+var baseName = '';
 var subDir = baseName + '/';
 var inpFileName = baseName + '.csv';
-var outFileName = 'test_out_' + inpFileName;
-var logFileName = 'test_log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
-var errFileName = 'test_err_' + inpFileName;
-var outStream = fs.createWriteStream(`${dataDir}${subDir}${outFileName}`, {flags: 'w'});
+inpFileName = 'val_species_state_rank.txt';
+var outFileName = '13_out_' + inpFileName;
+var logFileName = '13_log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
+var errFileName = '13_err_' + inpFileName;
+var outStream = null; //fs.createWriteStream(`${dataDir}${subDir}${outFileName}`, {flags: 'w'});
 var errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`, {flags: 'w'});
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`, {flags: 'w'});
 
-const inputFileDelim = ",";
-const outputFileDelim = ",";
+const inpFileDelim = "\t";
+const outFileDelim = "\t";
 
-var test = 1;
+var conTest = 0;
+var sciTest = 0;
+var test = 0;
 
 function test_parseSciName(src={scientificName:"Xestia (Pachnobia) homogena spp. heterogena"}) {
   console.log(parseSciName(src));
   console.log(moment().format('YYYYMMDD-HHMMSSS'))
   process.exit();
 }
-//test_parseSciName({scientificName:"Papaipema sp. 2 nr. pterisii"});
+if (sciTest) test_parseSciName({scientificName:"Papaipema sp. 2 nr. pterisii"});
 
 var scope = {
     'G': {name:'Global',desc:''},
@@ -65,12 +85,12 @@ function test_getConservationNames() {
   getConservationNames('SNR?');
   getConservationNames('S1S2B');
   getConservationNames('SNAN');
-  getConservationNames('S1B,SNAN');
   getConservationNames('N1?');
-  getConservationNames('S1B,S2M,N3B');
+  getConservationNames('S1B,SNAN');
+  getConservationNames('{S1B,S2M,N3B}');
   process.exit();
 }
-if (test) test_getConservationNames();
+if (conTest) test_getConservationNames();
 
 console.log(dataDir+subDir+inpFileName);
 
@@ -82,13 +102,14 @@ getConservationStatusFile(dataDir+subDir+inpFileName)
       //await parseSciName(src.rows[i]); //this is called within selectValSpecies() now.
       await selectValSpecies(src.rows[i])
         .then(async val => {
-          log(val.message, outStream);
+          log(val.message, logStream);
           if (val.type == 'multiple') {
             for (var j=0; j<val.rows.length; j++) {
-              log(`MULTIPLE | ${val.rows[j].taxonId} | ${val.rows[j].scientificName} | ${val.rows[j].taxonomicStatus}`, outStream);
+              log(`MULTIPLE | ${val.rows[j].taxonId} | ${val.rows[j].scientificName} | ${val.rows[j].taxonomicStatus}`, logStream);
             }
           }
-          await getConservationNames(val.src.stateRank);
+          val.src.stateText = await getConservationNames(val.src.stateRank);
+          writeResultToFile(val.src);
         }).catch(err => {
           if (err.type != 'ignore') {log(err.message, errStream); /*log(err.sql, errStream);*/}
         });
@@ -107,15 +128,19 @@ getConservationStatusFile(dataDir+subDir+inpFileName)
 */
 async function getConservationStatusFile(inpFileName) {
   try {
-    return await csvFileTo2DArray(inpFileName, inputFileDelim, true, true);
+    return await csvFileTo2DArray(inpFileName, inpFileDelim, true, true);
   } catch(err) {
     throw(err);
   }
 }
 
+/*
+  Handle an array of names from postgres, like {S1,S3B,N2?}, or a simple CSV
+  list.
+*/
 function getConservationNames(Rs) {
   try {
-    var Ra = Rs.split(',').slice(); //Rank Code String to Rank Code Array
+    var Ra = Rs.replace(/{|}/g,'').split(',').slice(); //Strip braces, convert Rank Code CSV String to Rank Code Array
     var Ro = {}; //Rank Result Object from conversion of Code to Text and Tokens
     var Rt = ''; //Rank Text String
     if (test) console.log(`${Ra.length}:`,Ra);
@@ -126,6 +151,7 @@ function getConservationNames(Rs) {
       if (i<Ra.length-1) Rt += ', ';
     }
     console.log(Rs, '==>', Rt);
+    return Rt;
   } catch(err) {
     console.log('getConservationNames', err);
     return null;
@@ -192,7 +218,8 @@ function getConservationName(sR, nR=0, pS=null) {
 
     var rName = '';
     if (test) console.log(`nR:${nR} | pS:${pS} | sId:${sId}`);
-    if (nR == 0 || sId != pS) {rName += scope[sId].name + ' Rank: ';}
+    //don't add the text 'Scope-name Rank: ', it's superfluous for ALA display
+    if (0 && (nR == 0 || sId != pS)) {rName += scope[sId].name + ' Rank: ';}
     if (rId) {
       //console.log('rId', rId);
       if (level[rId]) rName += `${level[lId].name} ~ ${level[rId].name}`;
@@ -263,4 +290,52 @@ ORDER BY "taxonomicStatus" ASC
           });
         }
     })
+}
+
+/*
+get array of object keys from val object and write to file header
+*/
+function writeHeaderToFile(val) {
+  var out = '';
+  var arr = Object.keys(val); //result is array of keys
+
+  for (i=0; i<arr.length; i++) {
+    out += arr[i];
+    if (i < (arr.length-1)) out += outFileDelim;
+  }
+
+  outStream.write(`${out}\n`);
+}
+
+/*
+This assumes that the incoming object is one line of data that was parsed into
+named fields that are DwCA compliant.
+*/
+function writeResultToFile(val) {
+  var out = '';
+  var fld = '';
+
+  if (!outStream) {
+    outStream = fs.createWriteStream(`${dataDir}${subDir}${outFileName}`, {flags: 'w', encoding: 'utf8'});
+    writeHeaderToFile(val);
+  }
+
+  //loop through values. add double quotes if not there
+  for (const key in val) {
+    //fld = val[key] || '';
+    fld = val[key]!=null?val[key]:''; //this is not tested on a large set of data
+    if (isNaN(fld)) { //check for null, numeric
+      //check for leading and trailing double-quotes
+      if (fld.substring(0,1) != `"` && fld.substring(fld.length-1,fld.length) != `"`) {
+        fld = `"${fld}"`;
+      }
+    }
+    out += fld + outFileDelim;
+  }
+  //write output to file
+  out = out.replace(/(^,)|(,$)/g, "");//remove leading, trailing comma
+  out = out.replace(/(^\t)|(\t$)/g, "");//remove leading, trailing tab
+  log(`writeResultToFile | ${out}`, logStream);
+  outStream.write(`${out}\n`);
+  outCount++;
 }

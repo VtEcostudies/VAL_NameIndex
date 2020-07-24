@@ -6,7 +6,13 @@
   File: 09_ingest_species_list_new_not_found.js
 
   Purpose: Incorporate new VT Species Registry checklist files into the val_species
-  database, create a corrected taxon file for a future DwCA checklist to be
+  database that were NOT FOUND in GBIF. Also produce an output DwCA file fit to be
+  published on our IPT.
+
+  NOTE: this ingests files with the prefix 'new_', which should just be the output of
+  files with the prefix 'err_' from the standard ingestion process.
+
+  ALSO: Create a corrected taxon file for a future DwCA checklist to be
   published on our IPT, fill-in any missing higher-order taxa needed to support
   these new species in the ALA nameindexer, and create log files to keep an
   account of what was done.
@@ -62,9 +68,10 @@ var staticColumns = [];
 console.log(`config paths: ${JSON.stringify(paths)}`);
 
 var dataDir = paths.dataDir; //path to directory holding source data files - INCLUDING TRAILING SLASH
-var baseName = '';
-baseName = 'Vermont_Conservation_Missing'; //the not-found taxa from adding Vermont_Conservation_Status
-baseName = 'Springtails_VT';
+var baseName = paths.baseName;
+
+var dbInsert = 1;
+var dbUpdate = 0; //BE CAREFUL - we use our own taxonIds in here. If you dont guarantee unique, you'll overwrite!
 
 var subDir = baseName + '/';
 var inpFileName = 'new_' + baseName + '.csv'; //only apply not-found taxa from files prefixed with 'new_'
@@ -72,7 +79,7 @@ var outFileName = 'val_' + inpFileName;
 var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
 var errFileName = 'err_' + inpFileName;
 
-//Don't create outStream here. Empty outStream flags writing header to file.
+//Don't create outStream here. An empty outStream is used later to flag the writing of a header to file.
 //var outStream = fs.createWriteStream(`${dataDir}${subDir}${outFileName}`);
 var outStream = null;
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`);
@@ -83,11 +90,9 @@ var rowCount = 0; //count records available
 var outCount = 0; //count records completed so far
 var insCount = 0; //count records inserted
 var updCount = 0; //count records updated
+var getCount = 0; //count records selected
 var notCount = 0; //count records NOT found
 var errCount = 0; //count record errors
-
-var dbInsert = 1;
-var dbUpdate = 0; //BE CAREFUL - we use our own taxonIds in here. If you dont guarantee unique, you'll overwrite!
 
 process.on('exit', function(code) {
   displayStats();
@@ -101,6 +106,7 @@ getColumns()
         log(`Input file rowCount:${src.rowCount} | Header:${src.header}`);
         rowCount = src.rows.length;
         for (var i=0; i<src.rows.length; i++) {
+        //for (var i=0; i<2; i++) {
           if (src.rows[i].action == 'delete') {log(`skipping ${src.rows[i].scientificName}`, logStream, true); continue;}
           await addCanonicalName(src.rows[i], logStream); //parse scientificName into canonicalName and add to src object
           await matchGbifSpecies(src.rows[i], i)
@@ -159,6 +165,8 @@ function getColumns() {
 
 /*
 Parse the input file into a 2D array for processing.
+
+Important: this defines which columns, and in what order are added to the output file.
 */
 async function getSpeciesFile(inpFileName) {
   try {
@@ -179,40 +187,57 @@ function processResults(gbf, src) {
     , logStream, true);
 
     var val = valIngestNew(gbf, src);
-    writeResultToFile(val);
+    //if this is a trial-run or we're only dbUpdating, write results to output file
+    if (!dbInsert) {
+      writeResultToFile(val);
+    }
     if (dbInsert) {
       insertValTaxon(val, gbf.idx)
         .then(ins => {
           insCount++;
-          log(`${ins.idx} | insertValTaxon SUCCESS | taxonId:${ins.val.taxonId} | Inserted:${insCount}`, logStream, true);
+          log(`${ins.idx} | insertValTaxon SUCCESS | taxonId:${ins.res.taxonId} | Inserted:${insCount}`, logStream, true);
+          writeResultToFile(ins.val); //insertValTaxon returns values returned from dbInsert returning *.
         })
         .catch(err => {
-          //console.log(err.idx, 'insertValTaxon ERROR | gbifId:', err.val?err.val.taxonId:'err.val is empty', '|', err.message);
-          //log(`${err.idx} | insertValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, logStream, true);
-          //log(`${err.idx} | insertValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, errStream);
-          if (dbUpdate && Number(err.code)==23505) {
-            updateValTaxon(err.val, err.idx)
-              .then(upd => {
-                updCount++;
-                log(`${upd.idx} | updateValTaxon SUCCESS | taxonId:${upd.val.taxonId} | Updated:${updCount}`, logStream, true);
-              })
-              .catch(err => {
-                log(`${err.idx} | updateValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, logStream, true);
-                log(`${err.idx} | updateValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, errStream);
-                logErr(jsonToString(err.val), errStream);
-              });
-          } else { //end if (dbUpdate)
+          if (Number(err.code)==23505) { //23505 duplicate key value violates unique constraint (not primary key)
+            if (dbUpdate) {
+              updateValTaxon(err.val, err.idx)
+                .then(upd => {
+                  updCount++;
+                  log(`${upd.idx} | updateValTaxon SUCCESS | taxonId:${upd.val.taxonId} | Updated:${updCount}`, logStream, true);
+                  writeResultToFile(upd.val); //returns values returned from dbUpdate returning *.
+                })
+                .catch(err => {
+                  log(`${err.idx} | updateValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, logStream, true);
+                  log(`${err.idx} | updateValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, errStream);
+                  logErr(jsonToString(err.val), errStream);
+                });
+              } else { //not dbUpdate
+                getVTRegistryTaxon(err.val, err.idx)
+                  .then(get => {
+                    getCount++;
+                    log(`${get.idx} | getVTRegistryTaxon | taxonId:${get.rows[0].taxonId} | Selected:${getCount}`, logStream, true);
+                    writeResultToFile(get.val); //returns val with updated key values from select query
+                  })
+                  .catch(err => {
+                    log(`${err.idx} | getVTRegistryTaxon | sciName:${err.val.scientificName} | code:${err.code} | error:${err.message}`, logStream, true);
+                    log(`${err.idx} | getVTRegistryTaxon | sciName:${err.val.scientificName} | code:${err.code} | error:${err.message}`, errStream, true);
+                    logErr(jsonToString(err.val), errStream);
+                  })
+              } //end if (dbUpdate)
+          } else { //end if (23505)
             log(`${err.idx} | insertValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, logStream, true);
             log(`${err.idx} | insertValTaxon ERROR | taxonId:${err.val.taxonId} | code:${err.code} | error:${err.message}`, errStream);
             logErr(jsonToString(err.val), errStream);
           }
         });
-    } //end if (dbUpdate && dbInsert)
+    } //end if (dbInsert)
     if (dbUpdate && !dbInsert) {
       updateValTaxon(val, gbf.idx)
         .then(upd => {
           updCount++;
           log(`${upd.idx} | updateValTaxon SUCCESS | gbifId:${upd.val.taxonId} | Updated:${updCount}`, logStream, true);
+          writeResultToFile(upd.val); //returns values returned from dbUpdate returning *.
         })
         .catch(err => {
           log(`${err.idx} | updateValTaxon ERROR | gbifId:${err.val.taxonId} | error:${err.message}`, logStream, true);
@@ -312,16 +337,25 @@ downstream processing.
 async function insertValTaxon(val, idx) {
 
   var qryColumns = pgUtil.parseColumns(val, 1, [], staticColumns);
-  var sql_insert = `insert into val_species (${qryColumns.named}) values (${qryColumns.numbered}) returning "taxonId"`;
+  var sql_insert = `insert into val_species (${qryColumns.named}) values (${qryColumns.numbered}) returning *`;
 
   //console.log('insertValTaxon', sql_insert, qryColumns.values);
 
   return new Promise((resolve, reject) => {
     query(sql_insert, qryColumns.values)
       .then(res => {
-        res.val = val;
-        res.idx = idx;
-        resolve(res);
+        //console.log('insertValTaxon | res:', res.rows[0]);
+        var ret = {};
+        ret.res = res.rows[0];
+        val.taxonId=ret.res.taxonId;
+        val.taxonomicStatus=ret.res.taxonomicStatus;
+        val.acceptedNameUsage=ret.res.acceptedNameUsage;
+        val.acceptedNameUsageId=ret.res.acceptedNameUsageId;
+        val.species=ret.res.species;
+        val.speciesId=ret.res.speciesId;
+        ret.val = val;
+        ret.idx = idx;
+        resolve(ret);
       })
       .catch(err => {
         err.val = val;
@@ -341,7 +375,7 @@ return them as ERRORS.
 async function updateValTaxon(val, idx) {
 
   var qryColumns = pgUtil.parseColumns(val, 2, [val.taxonId], staticColumns);
-  var sql_update = `update val_species set (${qryColumns.named}) = (${qryColumns.numbered}) where "taxonId"=$1 returning "taxonId"`;
+  var sql_update = `update val_species set (${qryColumns.named}) = (${qryColumns.numbered}) where "taxonId"=$1 returning *`;
 
   //console.log('updateValTaxon', sql_update, qryColumns.values);
 
@@ -355,6 +389,41 @@ async function updateValTaxon(val, idx) {
           resolve(res);
         } else {
           res.message = `val_species taxonId(${val.taxonId}) NOT Found`;
+          reject(res);
+        }
+      })
+      .catch(err => {
+        err.val = val;
+        err.idx = idx;
+        reject(err);
+      })
+  })
+}
+
+/*
+Retrieve a row of data for a scientificName. This is used to fill the DwCA addendum file (to be
+appended to val_{filename}.csv) for both newly-inserted taxa, and previously-inserted taxa.
+
+The need for this arose from having to repeat this process of insertion on the same set of errors
+in the original species file.
+*/
+async function getVTRegistryTaxon(val, idx) {
+
+  var sql_select = `select * from val_species where "scientificName"=$1`;
+
+  return new Promise((resolve, reject) => {
+    query(sql_select, [val.scientificName])
+      .then(res => {
+        console.log('getVTRegistryTaxon | Found |', res.rows[0].taxonId, res.rows[0].scientificName);
+        res.val = val;
+        res.idx = idx;
+        if (res.rows[0]) {
+          for (key in res.val) {
+            res.val[key] = res.rows[0][key];
+          }
+          resolve(res);
+        } else {
+          res.message = `val_species scientificName(${val.scientificName}) NOT Found`;
           reject(res);
         }
       })
@@ -450,7 +519,7 @@ function logErr(obj, stream=null, override=true) {
 }
 
 function displayStats() {
-  log(`total:${rowCount}|inserted:${insCount}|updated:${updCount}|output:${outCount}|not-found:${notCount}|errors:${errCount}`, logStream, true);
+  log(`total:${rowCount}|inserted:${insCount}|updated:${updCount}|selected:${getCount}|output:${outCount}|not-found:${notCount}|errors:${errCount}`, logStream, true);
 }
 
 function valIngestNew(gbif, src) {
@@ -459,7 +528,7 @@ function valIngestNew(gbif, src) {
     var val = initValObject();
 
     val.gbifId=0;
-    val.taxonId=src.taxonId || null;
+    val.taxonId=src.taxonId || 'VTSR:*'; //this is how we invoke DB trigger to generate a new custom taxonId, and apply it to acceptedNameUsageId
     val.scientificName=src.canonicalName || null; //scientificName often contains author. nameindexer cannot handle that, so remove it.
     val.scientificNameAuthorship=src.scientificNameAuthorship || null;
     val.acceptedNameUsage=src.acceptedNameUsage || (src.taxonomicStatus=='accepted'?src.scientificName:null);
@@ -481,7 +550,7 @@ function valIngestNew(gbif, src) {
     val.nomenclaturalCode=src.nomenclaturalCode || 'VTSR'; //VTSR = VT Species Registry
     val.vernacularName=src.vernacularName || null;
     val.taxonRemarks=src.taxonRemarks || null;
-    val.taxonomicStatus=src.taxonomicStatus.toLowerCase() || null;
+    val.taxonomicStatus=src.taxonomicStatus?src.taxonomicStatus.toLowerCase():null;
 
     val.kingdom=gbif.kingdom?gbif.kingdom:src.kingdom;
     val.kingdomId=gbif.kingdomKey?gbif.kingdomKey:src.kingdomId;;
@@ -497,8 +566,8 @@ function valIngestNew(gbif, src) {
     val.genus=val.genus?val.genus:null;
     val.genusId=(val.genus==gbif.genus)?gbif.genusKey:null; //can't handle new genus yet
 
-    val.species=val.species?val.species:null;
-    val.speciesId=(val.species==gbif.species)?gbif.speciesKey:(val.taxonRank=='species'?val.taxonId:null);
+    val.species=val.species?val.species:(val.taxonRank=='species'?val.scientificName:null);
+    val.speciesId=(val.species==gbif.species)?gbif.speciesKey:null;
 
     if (!val.parentNameUsageId) {
       switch(val.taxonRank) {

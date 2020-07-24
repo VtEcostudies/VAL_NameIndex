@@ -33,7 +33,7 @@ var insCount = 0;
 var errCount = 0;
 var offset = 0;
 var limit = 25000;
-var where = `"createdAt"::date = now()::date - interval '1 day'`;
+var where = `"createdAt"::date > now()::date - interval '7 day'`;
 
 logStream = fs.createWriteStream(`${dataDir}/${logFileName}`, {flags: 'w'});
 

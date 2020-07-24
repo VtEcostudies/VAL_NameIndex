@@ -16,5 +16,5 @@ inner join val_species s
 on c."taxonId"=s."taxonId"
 --inner join val_vernacular v on c."taxonId"=v."taxonId"
 )
-to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\conservation\val_conservation_status.txt' 
+to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\conservation-status\val_conservation_status_all.txt'
 with NULL '' DELIMITER E'\t' QUOTE '"' FORCE QUOTE * HEADER CSV;

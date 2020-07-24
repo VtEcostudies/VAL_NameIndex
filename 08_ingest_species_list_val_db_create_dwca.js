@@ -71,28 +71,11 @@ var staticColumns = [];
 console.log(`config paths: ${JSON.stringify(paths)}`);
 
 var dataDir = paths.dataDir; //path to directory holding source data files - INCLUDING TRAILING SLASH
-var baseName = 'empty';
-//baseName = 'spidersVTlist';
-//baseName = 'WhirligigBeetles';
-//baseName = 'BombusChecklist';
-//baseName= 'CicadaVermont';
-//baseName= 'Orthoptera_Vermont';
-//baseName= 'Ticks_Vermont';
-//baseName= 'Spiders_Vermont';
-//baseName= 'Amphibian_Reptile_Vermont';
-//baseName = 'Robber_Flies_Vermont';
-//baseName = 'Butterflies_Vermont';
-//baseName = 'Crayfish_Vermont';
-//baseName = 'Dragonflies_Damselflies_Vermont';
-//baseName = 'Fish_Vermont';
-//baseName = 'Freshwater_Mussels_Vermont';
-//baseName = 'Plants_Vermont';
-//baseName = 'Syrphids_Vermont';
-//baseName = 'Error_Corrections';
-//baseName = 'Springtails_VT';
-//baseName = 'Bryophytes_VT';
-//baseName = 'Vermont_Conservation_Missing'; //the not-found taxa from adding Vermont_Conservation_Status
-//baseName= 'Cluster_Flies_Vermont';
+var baseName = paths.baseName; //moved this setting to 00_config.js, as it's used in downstream processing
+baseName = 'Moths_Vermont';
+
+var dbInsert = 1;
+var dbUpdate = 0;
 
 var subDir = baseName + '/';
 
@@ -106,7 +89,7 @@ var outFileName = 'val_' + inpFileName;
 var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
 var errFileName = 'err_' + inpFileName;
 
-//Don't create outStream here. Empty outStream flags writing header to file.
+//Don't create outStream here. An empty outStream var flags the writing header to file below.
 var outStream = null;
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`);
 var errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`);
@@ -118,9 +101,6 @@ var insCount = 0; //count records inserted
 var updCount = 0; //count records updated
 var notCount = 0; //count records NOT found
 var errCount = 0; //count record errors
-
-var dbInsert = 1;
-var dbUpdate = 0;
 
 process.on('exit', function(code) {
   displayStats();
@@ -215,9 +195,7 @@ If a match was made, or a species was found, produce the output.
 function processResults(gbf, src) {
   try {
 
-    log(`gbifToValIngest |
-      gbifId:${gbf.key} | GBIF scientificName:${gbf.scientificName} | GBIF canonicalName:${gbf.canonicalName} | GBIF rank:${gbf.rank}`
-    , logStream);
+    log(`gbifToValIngest | gbifId:${gbf.key} | GBIF scientificName:${gbf.scientificName} | GBIF canonicalName:${gbf.canonicalName} | GBIF rank:${gbf.rank}`, logStream);
 
     var val = gbifToValIngest(gbf, src);
     writeResultToFile(val);
