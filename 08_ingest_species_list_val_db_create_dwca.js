@@ -74,7 +74,7 @@ var dataDir = paths.dataDir; //path to directory holding source data files - INC
 var baseName = paths.baseName; //moved this setting to 00_config.js, as it's used in downstream processing
 baseName = 'Moths_Vermont';
 
-var dbInsert = 1;
+var dbInsert = 0;
 var dbUpdate = 0;
 
 var subDir = baseName + '/';

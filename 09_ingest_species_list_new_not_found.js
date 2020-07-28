@@ -70,7 +70,7 @@ console.log(`config paths: ${JSON.stringify(paths)}`);
 var dataDir = paths.dataDir; //path to directory holding source data files - INCLUDING TRAILING SLASH
 var baseName = paths.baseName;
 
-var dbInsert = 1;
+var dbInsert = 0;
 var dbUpdate = 0; //BE CAREFUL - we use our own taxonIds in here. If you dont guarantee unique, you'll overwrite!
 
 var subDir = baseName + '/';

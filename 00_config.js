@@ -35,8 +35,8 @@ For each new species dataset the following steps must be done:
 exports.paths = {
   dwcaDir: "../",
   dataDir: "../datasets/",
-  baseName: "Moths_Vermont"
-  //baseName: "Hippoboscidae_Vermont"
+  //baseName: "Moths_Vermont"
+  baseName: "Hippoboscidae_Vermont"
   //baseName: 'spidersVTlist'
   //baseName: 'WhirligigBeetles'
   //baseName: 'BombusChecklist'
