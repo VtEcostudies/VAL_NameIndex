@@ -8,6 +8,7 @@ copy (select
 "sex",
 "language",
 "countryCode",
-"source"
+"source",
+"preferred"
 from val_vernacular)
 to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_vernacular.csv' delimiter ',' csv header;

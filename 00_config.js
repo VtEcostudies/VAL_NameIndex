@@ -30,7 +30,12 @@ For each new species dataset the following steps must be done:
   - Write each record not matched to err_{incoming_file_name}
 
 2) node 09_ingest_species_list_new_not_found.js
-  -
+
+3) node 06_find_missing_gbif_id_add_to_val_db.ss
+  - Queries our db and finds missing entries in the taxonomic tree
+  - Uses GBIF API to fill in missing taxa
+  - Use repeatedly to complete the process.
+  
 */
 exports.paths = {
   dwcaDir: "../",

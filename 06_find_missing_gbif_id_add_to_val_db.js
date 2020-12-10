@@ -12,7 +12,7 @@
   Query missing primary taxonIds in table val_species by querying all secondary
   and tertiary taxonIds in the database. Add missing taxa to the val_species table.
 
-  The query find missing primary taxonIds for:
+  The query finds missing primary taxonIds for:
 
   kingdomId
   phylumId

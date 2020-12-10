@@ -3,7 +3,8 @@ v."taxonId",
 v."scientificName",
 v."vernacularName",
 s."kingdom",
-s."family"
+s."family",
+v."preferred"
 from val_vernacular v
 inner join val_species s
 on v."taxonId"=s."taxonId"

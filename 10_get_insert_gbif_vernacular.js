@@ -28,12 +28,13 @@ var staticColumns = [];
 
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
 var logFileName = 'get_insert_vernacular_names_' + moment().format('YYYYMMDD-HHMMSSS') + '.txt';
+var debug = true; //flag console output for debugging
 var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
-var offset = 0;
+var offset = 99;
 var limit = 25000;
-var where = `"createdAt"::date > now()::date - interval '7 day'`;
+var where = 'true';//`"createdAt"::date > now()::date - interval '7 day'`;
 
 logStream = fs.createWriteStream(`${dataDir}/${logFileName}`, {flags: 'w'});
 
@@ -50,30 +51,28 @@ getColumns()
           await getGbifVernacularNames(res.rows[i]) //use taxonId - a column returned from SELECT query
             .then(async res => {
               for (var j=0; j<res.results.length; j++) { //gbif api syntax - 'results' not 'rows'...
-                if (res.results[j].language != 'eng') {
-                  //log(`${res.val.taxonId} | ${res.val.scientificName} | skipping '${res.results[j].language}' language result`, logStream);
-                  continue;
+                if (res.results[j].language == 'eng') { //} && res.results[j].preferred) {
+                  await insertValVernacular(res.results[j], res.val)
+                    .then(res => {
+                      insCount++;
+                      const msg = `SUCCESS: insertValVernacular | ${res.val.taxonId} | ${res.val.scientificName} | ${res.val.vernacularName}`;
+                      log(msg, logStream, true); //just echo successes
+                    })
+                    .catch(err => {
+                      errCount++;
+                      const msg = `ERROR: insertValVernacular | ${err.val?err.val.taxonId:undefined} | ${err.val?err.val.scientificName:undefined} | ${err.val?err.val.vernacularName:undefined} | error:${err.message}`;
+                      log(msg, logStream, debug);
+                    })
                 }
-                await insertValVernacular(res.results[j], res.val)
-                  .then(res => {
-                    insCount++;
-                    const msg = `SUCCESS: insertValVernacular | ${res.val.taxonId} | ${res.val.scientificName} | ${res.val.vernacularName}`;
-                    log(msg, logStream, true); //just echo successes
-                  })
-                  .catch(err => {
-                    errCount++;
-                    const msg = `ERROR: insertValVernacular | ${err.val?err.val.taxonId:undefined} | ${err.val?err.val.scientificName:undefined} | ${err.val?err.val.vernacularName:undefined} | error:${err.message}`;
-                    log(msg, logStream);
-                  })
               } //end for-loop
             })
             .catch(err => {
-              log(`ERROR: getGbifVernacularNames | ${err.val.taxonId} | ${err.val.scientificName} | ${err.message}`, logStream);
+              log(`ERROR: getGbifVernacularNames | ${err.val.taxonId} | ${err.val.scientificName} | ${err.message}`, logStream, debug);
             })
         }
       })
       .catch(err => {
-        log(`ERROR: getValTaxa | ${err.message}`, logStream);
+        log(`ERROR: getValTaxa | ${err.message}`, logStream, debug);
       });
   })
   .catch(err => {
@@ -113,7 +112,7 @@ function getGbifVernacularNames(val) {
         reject(err);
       } else {
         if (body) {
-          log(`RESULT: getGbifVernacularNames(${val.taxonId}) | ${val.scientificName} | ${res.statusCode} | count: ${body?body.results.length:null}`, logStream);
+          log(`RESULT: getGbifVernacularNames(${val.taxonId}) | ${val.scientificName} | ${res.statusCode} | count: ${body?body.results.length:null}`, logStream, debug);
           body.val = val;
           resolve(body);
         } else {
@@ -140,6 +139,7 @@ async function insertValVernacular(gbif, val) {
     val.vernacularName = gbif.vernacularName; //translate gbif api values to val columns
     val.source = gbif.source;
     val.language = gbif.language;
+    val.preferred = gbif.preferred; //newly added on 2020-11-13
 
     var queryColumns = await pgUtil.parseColumns(val, 1, [], staticColumns);
     var text = `insert into val_vernacular (${queryColumns.named}) values (${queryColumns.numbered}) returning "taxonId"`;

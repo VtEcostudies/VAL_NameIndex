@@ -72,7 +72,7 @@ console.log(`config paths: ${JSON.stringify(paths)}`);
 
 var dataDir = paths.dataDir; //path to directory holding source data files - INCLUDING TRAILING SLASH
 var baseName = paths.baseName; //moved this setting to 00_config.js, as it's used in downstream processing
-baseName = 'Moths_Vermont';
+baseName = 'Add_Hoc_Taxa';
 
 var dbInsert = 0;
 var dbUpdate = 0;
@@ -83,6 +83,9 @@ if (inpFileDelim == ",") {
   inpFileName = baseName + '.csv';
 } else if (inpFileDelim == '\t') {
   inpFileName = baseName + '.txt';
+}
+if (baseName == 'Add_Hoc_Taxa') {
+  inpFileName = 'species_Propylea_quatuordecimpunctata.csv'
 }
 //inpFileName = 'fix_' + inpFileName; //use this to handle small update files in the same directory
 var outFileName = 'val_' + inpFileName;

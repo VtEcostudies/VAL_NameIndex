@@ -43,5 +43,6 @@
 	<field index="6" term="http://purl.org/dc/terms/language"/>
 	<field index="7" term="http://rs.tdwg.org/dwc/terms/countryCode"/>
 	<field index="8" term="http://purl.org/dc/terms/source"/>
+	<field index="9" term="http://rs.gbif.org/terms/1.0/isPreferredName"/>
   </extension>
 </archive>
