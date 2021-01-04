@@ -11,4 +11,5 @@ package-lock.json
 
 #include
 !/database/pg_dump/*.zip
-!/database/export/name-indexer/*
+!/database/export/name-indexer/*.xml
+!/database/export/name-indexer/*.csv
