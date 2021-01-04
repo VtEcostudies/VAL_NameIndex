@@ -1,0 +1,14 @@
+package-lock.json
+#*.csv
+#*.zip
+#include all folders
+!*/
+
+#exclude
+/database/pg_dump/*.sql
+/node_modules
+/database/export
+
+#include
+!/database/pg_dump/*.zip
+!/database/export/name-indexer/*
