@@ -1,11 +1,21 @@
 {
-    "secret": "Very long string here",
+  "secret": "Very long string here",
 
-	"pg": {
+  "pg10": {
 		"user": "val",
 		"host": "localhost",
 		"database": "val_species",
 		"password": "EatArugula",
-		"port": 5433
+		"port": 5433,
+    "version": 10
+	},
+
+	"pg": {
+		"user": "postgres",
+		"host": "localhost",
+		"database": "val_species",
+		"password": "EatArugula",
+		"port": 5432,
+    "version": 13
 	}
 }

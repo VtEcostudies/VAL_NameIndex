@@ -35,7 +35,7 @@ For each new species dataset the following steps must be done:
   - Queries our db and finds missing entries in the taxonomic tree
   - Uses GBIF API to fill in missing taxa
   - Use repeatedly to complete the process.
-  
+
 */
 exports.paths = {
   dwcaDir: "../",
