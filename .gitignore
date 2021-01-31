@@ -13,3 +13,4 @@ package-lock.json
 !/database/pg_dump/*.zip
 !/database/export/name-indexer/*.xml
 !/database/export/name-indexer/*.csv
+!/database/export/name-indexer/*.txt

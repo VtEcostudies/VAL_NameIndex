@@ -72,7 +72,7 @@ console.log(`config paths: ${JSON.stringify(paths)}`);
 
 var dataDir = paths.dataDir; //path to directory holding source data files - INCLUDING TRAILING SLASH
 var baseName = paths.baseName; //moved this setting to 00_config.js, as it's used in downstream processing
-baseName = 'Add_Hoc_Taxa';
+//baseName = 'Add_Hoc_Taxa';
 
 var dbInsert = 0;
 var dbUpdate = 0;
