@@ -31,7 +31,7 @@ For each new species dataset the following steps must be done:
 
 2) node 09_ingest_species_list_new_not_found.js
 
-3) node 06_find_missing_gbif_id_add_to_val_db.ss
+3) node 06_find_missing_gbif_id_add_to_val_db.js
   - Queries our db and finds missing entries in the taxonomic tree
   - Uses GBIF API to fill in missing taxa
   - Use repeatedly to complete the process.
@@ -40,8 +40,11 @@ For each new species dataset the following steps must be done:
 exports.paths = {
   dwcaDir: "../",
   dataDir: "../datasets/",
-  //baseName: "Moths_Vermont"
-  baseName: "Hippoboscidae_Vermont"
+  //make fileName null or empty to use baseName for fileName in downstream processing
+  fileName: "Moths_Vermont_V5",
+  //baseName: 'Bees_Vermont'
+  baseName: "Moths_Vermont"
+  //baseName: "Hippoboscidae_Vermont"
   //baseName: 'spidersVTlist'
   //baseName: 'WhirligigBeetles'
   //baseName: 'BombusChecklist'

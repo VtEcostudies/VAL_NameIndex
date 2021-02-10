@@ -27,7 +27,7 @@ val_species database table.
 */
 function gbifToValDirect(gbif) {
 
-  var val = initValObject();
+  var val = initValObject(); //necessary to make field-order consistent across rows and datasets
 
   if (gbif.canonicalName) {
     var rank = gbif.rank?gbif.rank.toLowerCase():undefined;
@@ -73,21 +73,24 @@ Translate GBIF taxon data to VAL taxon data for insert/update into database and
 output to file.
 
 The format of the incoming (source) data should conform to the output of the GBIF
-species API, not the matching API.
+/species API, not the  GBIF /match API.
 
 inputs:
 
-gbif - object returned from GBIF species query - best match available
+gbif - object returned from GBIF /species query - best match available
 src - object from source input row
 
 outputs:
 
-scientificName without Author - We should never return a scientificName with author included (use authorship for that) because the ala
-nameindexer can't handle it.
+scientificName without Author - We should never return a scientificName with author included (use authorship for that)
+because the ala nameindexer can't handle it.
 
 val_species columns mapped to their GBIF equivalents
 
 additional val_species columns, if present in the incoming dataset.
+
+2021-02-05 Important Note: Need to learn how to handle species and speciesId fields when taxonomicStatus
+is '*synonym'.
 */
 function gbifToValIngest(gbif, src) {
 
@@ -145,8 +148,13 @@ function gbifToValIngest(gbif, src) {
   val.familyId=gbif.familyKey?gbif.familyKey:null;
   val.genus=gbif.genus?gbif.genus:null;
   val.genusId=gbif.genusKey?gbif.genusKey:null;
-  val.species=gbif.species?gbif.species:null;
-  val.speciesId=gbif.speciesKey?gbif.speciesKey:null;
+  if (val.taxonomicStatus.includes('synonym')) {
+    val.species=src.species?src.species:null;
+    val.speciesId=null;
+  } else {
+    val.species=gbif.species?gbif.species:null;
+    val.speciesId=gbif.speciesKey?gbif.speciesKey:null;
+  }
 
   //append items specific to our species index
   val.datasetName=src.datasetName || null;

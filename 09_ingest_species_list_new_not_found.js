@@ -69,12 +69,14 @@ console.log(`config paths: ${JSON.stringify(paths)}`);
 
 var dataDir = paths.dataDir; //path to directory holding source data files - INCLUDING TRAILING SLASH
 var baseName = paths.baseName;
+var fileName = paths.fileName;
+if (!fileName) {fileName = baseName;}
 
-var dbInsert = 0;
+var dbInsert = 1;
 var dbUpdate = 0; //BE CAREFUL - we use our own taxonIds in here. If you dont guarantee unique, you'll overwrite!
 
 var subDir = baseName + '/';
-var inpFileName = 'new_' + baseName + '.csv'; //only apply not-found taxa from files prefixed with 'new_'
+var inpFileName = 'new_' + fileName + '.csv'; //only apply not-found taxa from files prefixed with 'new_'
 var outFileName = 'val_' + inpFileName;
 var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
 var errFileName = 'err_' + inpFileName;
