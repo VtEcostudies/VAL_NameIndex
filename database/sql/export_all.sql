@@ -1,6 +1,6 @@
 --NOTE: pg just needs permissions to write to the specified folder. chmod 777 \dir\subdir.
 --NOTE: you must post-process the output to convert NULL fields (|) to empty double-quotes ("").
---	PostGres COPY command NEVER quotes NULL values, and won't allow NULL export as ("").
+--	Postgres COPY command NEVER quotes NULL values, and won't allow NULL export as ("").
 copy (select
 	"taxonId" AS "id",
 	"taxonId",
@@ -60,4 +60,4 @@ copy (select
 "federalList"
 from val_conservation_status)
 to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_conservation_status.csv' 
-with (FORMAT CSV, HEADER TRUE, FORCE_QUOTE *, NULL '|')
+with (FORMAT CSV, HEADER TRUE, FORCE_QUOTE *, NULL '|');

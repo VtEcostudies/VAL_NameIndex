@@ -21,7 +21,8 @@
   familyId
   genusId
   speciesId
-  acceptedNameUsage
+  acceptedNameUsageId
+  parentNameUsageId
 
   Query the GBIF species API for complete record data for each missing taxonId.
 */
@@ -49,6 +50,7 @@ var errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`, {flags
 var rowCount = 0;
 var insCount = 0;
 var updCount = 0;
+var delCount = 0;
 var errCount = 0;
 
 process.on('exit', function(code) {
@@ -71,11 +73,49 @@ getColumns()
           log(`row ${i+1}: ${JSON.stringify(res.rows[i])}`, logStream, true);
           await getGbifSpecies(res.rows[i], res.rows[i].missingId) //3 columns returned from getValMissing: missingId, sourceId, column
             .then(async res => {
-              //if key != nubKey in GBIF, we don't have a definitive value. This cannot be resolved
-              //without altering the source record's taxon key to the nubKey. To do that, getValMissing
-              //must be altered to return actual taxonId of the source record. The lookup ID will now
-              //be called missingId in the query.
-              if (!res.gbif.nubKey || res.gbif.key == res.gbif.nubKey) {
+              /*
+                GBIF missingId taxon is no longer found. Search for the sourceId. If that's not found delete ours,
+                UNLESS the taxonId is VTSR*.
+              */
+              if (res.fix.missingId.includes('VTSR') || res.fix.sourceId.includes('VTSR')) {
+                errCount++;
+                var err = {message:'CANNOT UPDATE or DELETE VTSR* taxonIds!!!!!!!!!!!!!!!!!!!!!'};
+                log(`getGbifSpecies ERROR ${errCount} | taxonId:${res.fix.missingId} | error:${err.message}`, logStream, true);
+                log(`${res.fix.missingId} | ${err.message}`, errStream, true);
+              } else if (!res.gbif) { //missingId not found in GBIF
+                await getGbifSpecies(res.fix, res.fix.sourceId) //look for sourceId
+                  .then(async res => {
+                    if (res.gbif) { //found GBIF result for sourceId
+                      await updateValSource(res.gbif, res.fix) //update the entire record?
+                        .then(res => {
+                          updCount++;
+                          log(`updateValSource SUCCESS | taxonId:${res.gbif.key}`, logStream);
+                        })
+                        .catch(err => {
+                          errCount++;
+                          log(`updateValSource ERROR ${errCount} | gbifId:${err.gbif.key} | error:${err.message}`, logStream, true);
+                          log(`${err.gbif.key} | ${err.message}`, errStream, true);
+                        });
+                    } else {
+                      await deleteValSource(res.fix.sourceId)
+                      .then(res => {
+                        delCount++;
+                        log(`deleteValSource SUCCESS | taxonId:${res.sourceId}`, logStream);
+                      })
+                      .catch(err => {
+                        errCount++;
+                        log(`deleteValSource ERROR ${errCount} | taxonId:${err.sourceId} | error:${err.message}`, logStream, true);
+                        log(`${err.taxonId} | ${err.message}`, errStream, true);
+                      });
+                    }
+                  })
+                  .catch(err => {
+                    errCount++;
+                    log(`getGbifSpecies (for nubKey) ERROR ${errCount} | gbifId:${err.fix.missingId} | ${err.message}`, logStream, true);
+                    log(`${err.fix.missingId} | ${err.message}`, errStream, true);
+                  });
+              //we got a gbif result, and gbif.key is good
+              } else if (!res.gbif.nubKey || res.gbif.key == res.gbif.nubKey) {
                 await insertValMissing(res.gbif)
                   .then(res => {
                     insCount++;
@@ -86,7 +126,12 @@ getColumns()
                     log(`insertValMissing ERROR ${errCount} | gbifId:${err.gbif.key} | error:${err.message}`, logStream, true);
                     log(`${err.gbif.key} | ${err.message}`, errStream, true);
                   });
-                } else {
+                } else { //we got a gbif result, but gbif.key != gbif.nubkey
+                  /*
+                    If key != nubKey in GBIF, we don't have a definitive value. This cannot be resolved
+                    without altering the source record's taxon key to be the nubKey. To do that, getValMissing
+                    returns the taxonId of the source record in the value fix.sourceId.
+                    */
                   await getGbifSpecies(res.fix, res.gbif.nubKey)
                     .then(async res => {
                       await updateValSource(res.gbif, res.fix)
@@ -109,8 +154,8 @@ getColumns()
             })
             .catch(err => {
               errCount++;
-              log(`getGbifSpecies (for missingId) ERROR ${errCount} | gbifId:${err.val.missingId} | ${err.message}`, logStream, true);
-              log(`${err.val.missingId} | ${err.message}`, errStream, true);
+              log(`getGbifSpecies (for missingId) ERROR ${errCount} | gbifId:${err.fix.missingId} | ${err.message}`, logStream, true);
+              log(`${err.fix.missingId} | ${err.message}`, errStream, true);
             });
         }
       })
@@ -177,7 +222,7 @@ async function getValMissing() {
   where a."taxonId" is null and b."orderId" is not null and b."orderId" != '0'
   union
   --retrieve a list of familyId which lack a primary definition (no taxonId)
-  select b."familyId" as "missingId",  b."taxonId" as "sourceId", 'familiy' as column
+  select b."familyId" as "missingId",  b."taxonId" as "sourceId", 'family' as column
   from val_species a
   right join val_species b
   on a."taxonId" = b."familyId"
@@ -202,13 +247,15 @@ async function getValMissing() {
 }
 
 /*
-  Get GBIF species for key.
+  Get GBIF species for key. Key in this case is one of:
+  - fix.missingId
+  - gbif.nubkey from missingId results for a dead-end taxon
+  - fix.sourceId
   Return
   - results or error
-  - incoming val object from getValMissing
+  - incoming fix object from getValMissing for downstream processing
 */
-async function getGbifSpecies(fix, key=null) {
-  if (!key) {key = fix.missingId;}
+async function getGbifSpecies(fix, key) {
   var parms = {
     url: `http://api.gbif.org/v1/species/${key}`,
     json: true
@@ -224,9 +271,13 @@ async function getGbifSpecies(fix, key=null) {
           log(`getGbifSpecies(${key}) | ${res.statusCode} | gbif_key: ${body.key} | gbif_nubKey: ${body.nubKey}`, logStream, true);
           resolve({"gbif":body, "fix":fix});
         } else {
-          var err = {message:`${key} NOT Found`};
-          err.fix = fix; //return our incoming getValMissing object
-          reject(err);
+          var err = {message:`${key} NOT Found. | missingId: http://api.gbif.org/v1/species/${fix.missingId} | sourceId: http://api.gbif.org/v1/species/${fix.sourceId}`};
+          errCount++;
+          log(`getGbifSpecies ERROR ${errCount} | ${err.message}`, logStream, true);
+          log(`${key} | ${err.message}`, errStream, true);
+          resolve({"gbif":null, "fix":fix, "err":err});
+          //err.fix = fix; //return our incoming getValMissing object
+          //reject(err);
         }
       }
     });
@@ -256,7 +307,11 @@ async function insertValMissing(gbif) {
   })
 }
 
-async function updateValSource(gbif, fix) {
+/*
+  Here, we've determined that the sourceId had a bad value for missingId. Using a good value, update our sourceId
+  record.
+*/
+function updateValSource(gbif, fix) {
   log(`updateValSource | taxonId = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`, logStream, true);
 
   //translate gbif api values to val columns - but we only use two of them for this missingId update
@@ -291,6 +346,29 @@ async function updateValSource(gbif, fix) {
   })
 }
 
+/*
+  ...can't delete from val_species if val_vernacular has pointer. need to alter foreign key relation
+  to 'ON DELETE CASCADE'.
+*/
+function deleteValSource(taxonId) {
+  var sql = `delete from val_species where "taxonId"=$1;`;
+  var arg = [taxonId];
+
+  log(`deleteValSource Query | ${sql} | ${arg}`, logStream, true);
+
+  return new Promise((resolve, reject) => {
+    query(sql,arg)
+      .then(res => {
+        res.taxonId = taxonId;
+        resolve(res);
+      })
+      .catch(err => {
+        err.taxonId = taxonId;
+        reject(err);
+      })
+  })
+}
+
 function displayStats() {
-  log(`total:${rowCount}|inserted:${insCount}|updated:${updCount}|errors:${errCount}`, logStream, true);
+  log(`total:${rowCount}|inserted:${insCount}|updated:${updCount}|deleted:${delCount}|errors:${errCount}`, logStream, true);
 }

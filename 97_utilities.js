@@ -6,8 +6,8 @@ module.exports.addTaxonRank = addTaxonRank;
 module.exports.addCanonicalName = addCanonicalName;
 module.exports.parseSciName = parseSciName;
 
-function log(out, stream=null, override=false) {
-  if (override||!stream) {console.log(out);}
+function log(out, stream=null, consoul=false) {
+  if (consoul || !stream) {console.log(out);}
   if (stream) stream.write(`${out}\n`);
 }
 

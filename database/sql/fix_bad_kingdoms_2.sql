@@ -6,6 +6,7 @@ select * from val_species where "gbifId"=100057616;
 select * from val_species where "gbifId"=135229340;
 select * from val_species where "gbifId"=132928401;
 select * from val_species where "kingdomId"='132928401'; --bad kingdomId, no GBIF results
+select * from val_species where "gbifId"=106383006;
 
 select * from val_species where "taxonRank"='kingdom';
 update val_species set "kingdomId"='1' where "kingdomId"='132928401'; --fix one

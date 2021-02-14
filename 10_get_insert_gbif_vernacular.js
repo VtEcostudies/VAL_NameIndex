@@ -32,9 +32,9 @@ var debug = true; //flag console output for debugging
 var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
-var offset = 99;
+var offset = 0;
 var limit = 25000;
-var where = 'true';//`"createdAt"::date > now()::date - interval '7 day'`;
+var where = 'true';//`"createdAt"::date > now()::date - interval '30 day'`;
 
 logStream = fs.createWriteStream(`${dataDir}/${logFileName}`, {flags: 'w'});
 
