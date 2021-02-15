@@ -15,7 +15,9 @@
   3) for each taxon, find the canonical taxonId, defined as the GBIF taxon where key==nubKey
   4) set all taxonRankIds to the nubKey value
   5) set all parentNameUsageIds to the nubKey value
-  6) if taxonRank<=species, figure out whether to apply this to acceptedNameUsageId
+  6) set all acceptedNameUsageIds to the nubKey value
+  7) for taxonRank==genus there may be too many issues to resolve easily on this first round
+  8) for taxonRank==species, figure out whether to apply this to acceptedNameUsageId
 
   Notes:
 
@@ -32,8 +34,8 @@ const query = require('./database/db_postgres').query;
 const pgUtil = require('./database/db_pg_util');
 const log = require('./97_utilities').log;
 
-var testMode = true; //select or update/delete?
-var delkey = false; //call delete function?
+var testMode = 1; //select or update/delete?
+var delkey = 0; //call delete function?
 
 log(`config paths: ${JSON.stringify(paths)}`);
 
@@ -44,11 +46,11 @@ var logFileName = 'fix_duplicate_taxa_' + moment().format('YYYYMMDD-HHMMSSS') + 
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`, {flags: 'w'});
 var errFileName = 'err_' + baseName + '.txt';
 var errStream = null;
-function err(text, stream, consoul) {
+function err(text, stream=null, consoul=false) {
   if (!errStream) {
     errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`, {flags: 'w'});
   }
-  log(text, errStream, console);
+  log(text, errStream, consoul);
 }
 var errCount = 0;
 
@@ -57,7 +59,7 @@ process.on('exit', function(code) {
   return log(`About to exit with code ${code}`, logStream, true);
 });
 
-var ranks = ['genus'];
+var ranks = ['kingdom','phylum','class','order','family'];
 
 ranks.forEach((rank, index, array) => {
   getValDupes(rank)
@@ -170,7 +172,12 @@ function fixTaxonRankKeys(canonicalName, taxonRank, nubKey) {
 }
 
 /*
-  Update all parentNameUsage keys from key to nubKey for one rank level lower than taxonRank.
+  Update all parentNameUsageId keys from key to nubKey for any taxa having non-nubKey values in
+  parentNameUsageId.
+
+  For this to work, we MUST preserve all the non-nubKey primary taxa in the index until the we've
+  finished all these tasks. Be careful not to delete those primary taxa until all dependencies are
+  fixed.
 */
 function fixParentUsageKeys(canonicalName, taxonRank, nubKey) {
 

@@ -39,7 +39,7 @@ const log = require('./97_utilities').log;
 var staticColumns = [];
 
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
-var baseName = 'Add_Missing_VAL_Taxa';
+var baseName = '00_Add_Missing_VAL_Taxa';
 var subDir = `${baseName}/`; //put output into a sub-dir so we can easily find it
 var logFileName = 'insert_missing_taxa_' + moment().format('YYYYMMDD-HHMMSSS') + '.txt';
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`, {flags: 'w'});
@@ -54,6 +54,7 @@ var delCount = 0;
 var errCount = 0;
 
 process.on('exit', function(code) {
+  log(`--------------------------------------------------------------------------------`, logStream, true);
   displayStats();
   return console.log(`About to exit with code ${code}`);
 });
@@ -70,6 +71,7 @@ getColumns()
         log(`${res.rowCount} missing gbif Ids.`, logStream, true);
         for (var i=0; i<res.rowCount; i++) {
         //for (var i=0; i<1; i++) {
+          log(`--------------------------------------------------------------------------------`, logStream, true);
           log(`row ${i+1}: ${JSON.stringify(res.rows[i])}`, logStream, true);
           await getGbifSpecies(res.rows[i], res.rows[i].missingId) //3 columns returned from getValMissing: missingId, sourceId, column
             .then(async res => {
@@ -77,13 +79,8 @@ getColumns()
                 GBIF missingId taxon is no longer found. Search for the sourceId. If that's not found delete ours,
                 UNLESS the taxonId is VTSR*.
               */
-              if (res.fix.missingId.includes('VTSR') || res.fix.sourceId.includes('VTSR')) {
-                errCount++;
-                var err = {message:'CANNOT UPDATE or DELETE VTSR* taxonIds!!!!!!!!!!!!!!!!!!!!!'};
-                log(`getGbifSpecies ERROR ${errCount} | taxonId:${res.fix.missingId} | error:${err.message}`, logStream, true);
-                log(`${res.fix.missingId} | ${err.message}`, errStream, true);
-              } else if (!res.gbif) { //missingId not found in GBIF
-                await getGbifSpecies(res.fix, res.fix.sourceId) //look for sourceId
+              if (!res.gbif) { //missingId not found in GBIF
+                await getGbifSpecies(res.fix, res.fix.sourceId) //look for sourceId in GBIF
                   .then(async res => {
                     if (res.gbif) { //found GBIF result for sourceId
                       await updateValSource(res.gbif, res.fix) //update the entire record?
@@ -96,6 +93,11 @@ getColumns()
                           log(`updateValSource ERROR ${errCount} | gbifId:${err.gbif.key} | error:${err.message}`, logStream, true);
                           log(`${err.gbif.key} | ${err.message}`, errStream, true);
                         });
+                    } else if (res.fix.missingId.includes('VTSR') || res.fix.sourceId.includes('VTSR')){
+                      errCount++;
+                      var err = {message:'CANNOT DELETE VTSR* taxonIds!!!!!!!!!!!!!!!!!!!!!'};
+                      log(`getGbifSpecies ERROR ${errCount} | taxonId:${res.fix.missingId} | error:${err.message}`, logStream, true);
+                      log(`${res.fix.missingId} | ${err.message}`, errStream, true);
                     } else {
                       await deleteValSource(res.fix.sourceId)
                       .then(res => {
@@ -180,63 +182,63 @@ async function getValMissing() {
 
   text = `
   --retrieve a list of acceptedNameUsageId which lack a primary definition (no taxonId)
-  select cast(va."acceptedNameUsageId" as text) as "missingId", va."taxonId" as "sourceId", 'acceptedNameUsage' as column
+  select va."taxonId" as "sourceId", cast(va."acceptedNameUsageId" as text) as "missingId", va."taxonRank", 'acceptedNameUsage' as column
   from val_species vs
   right join val_species va
   on vs."taxonId" = va."acceptedNameUsageId"
   where vs."taxonId" is null and va."acceptedNameUsageId" != '' and va."acceptedNameUsageId" != '0'
   union
   --retrieve a list of parentNameUsageId which lack a primary definition (no taxonId)
-  select cast(va."parentNameUsageId" as text) as "missingId", va."taxonId" as "sourceId", 'parentNameUsage' as column
+  select va."taxonId" as "sourceId", cast(va."parentNameUsageId" as text) as "missingId", va."taxonRank", 'parentNameUsage' as column
   from val_species vs
   right join val_species va
   on vs."taxonId" = va."parentNameUsageId"
   where vs."taxonId" is null and va."parentNameUsageId" != '' and va."parentNameUsageId" != '0'
   union
   --retrieve a list of kingdomId which lack a primary definition (no taxonId)
-  select b."kingdomId" as "missingId",  b."taxonId" as "sourceId", 'kingdom' as column
+  select b."taxonId" as "sourceId", b."kingdomId" as "missingId", b."taxonRank", 'kingdom' as column
   from val_species a
   right join val_species b
   on a."taxonId" = b."kingdomId"
   where a."taxonId" is null and b."kingdomId" is not null and b."kingdomId" != '0'
   union
   --retrieve a list of phylumId which lack a primary definition (no taxonId)
-  select b."phylumId" as "missingId",  b."taxonId" as "sourceId", 'phylum' as column
+  select b."taxonId" as "sourceId", b."phylumId" as "missingId", b."taxonRank", 'phylum' as column
   from val_species a
   right join val_species b
   on a."taxonId" = b."phylumId"
   where a."taxonId" is null and b."phylumId" is not null and b."phylumId" != '0'
   union
   --retrieve a list of classId which lack a primary definition (no taxonId)
-  select b."classId" as "missingId",  b."taxonId" as "sourceId", 'class' as column
+  select b."taxonId" as "sourceId", b."classId" as "missingId", b."taxonRank", 'class' as column
   from val_species a
   right join val_species b
   on a."taxonId" = b."classId"
   where a."taxonId" is null and b."classId" is not null and b."classId" != '0'
   union
   --retrieve a list of orderId which lack a primary definition (no taxonId)
-  select b."orderId" as "missingId",  b."taxonId" as "sourceId", 'order' as column
+  select b."taxonId" as "sourceId", b."orderId" as "missingId", b."taxonRank", 'order' as column
   from val_species a
   right join val_species b
   on a."taxonId" = b."orderId"
   where a."taxonId" is null and b."orderId" is not null and b."orderId" != '0'
   union
   --retrieve a list of familyId which lack a primary definition (no taxonId)
-  select b."familyId" as "missingId",  b."taxonId" as "sourceId", 'family' as column
+  select b."taxonId" as "sourceId", b."familyId" as "missingId", b."taxonRank", 'family' as column
   from val_species a
   right join val_species b
   on a."taxonId" = b."familyId"
   where a."taxonId" is null and b."familyId" is not null and b."familyId" != '0'
   union
   --retrieve a list of genusId which lack a primary definition (no taxonId)
-  select b."genusId" as "missingId",  b."taxonId" as "sourceId", 'genus' as column
+  select b."taxonId" as "sourceId", b."genusId" as "missingId", b."taxonRank", 'genus' as column
   from val_species a
   right join val_species b
   on a."taxonId" = b."genusId"
   where a."taxonId" is null and b."genusId" is not null and b."genusId" != '0'
   union
   --retrieve a list of speciesId which lack a primary definition (no taxonId)
-  select b."speciesId" as "missingId",  b."taxonId" as "sourceId", 'species' as column
+  select b."taxonId" as "sourceId", b."speciesId" as "missingId", b."taxonRank", 'species' as column
   from val_species a
   right join val_species b
   on a."taxonId" = b."speciesId"

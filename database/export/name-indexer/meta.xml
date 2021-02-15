@@ -1,5 +1,5 @@
 <archive xmlns="http://rs.tdwg.org/dwc/text/" metadata="eml.xml">
-  <core encoding="utf-8" fieldsTerminatedBy="\t" linesTerminatedBy="\n" fieldsEnclosedBy='"' ignoreHeaderLines="1" rowType="http://rs.tdwg.org/dwc/terms/Taxon">
+  <core encoding="utf-8" fieldsTerminatedBy="," linesTerminatedBy="\n" fieldsEnclosedBy='"' ignoreHeaderLines="1" rowType="http://rs.tdwg.org/dwc/terms/Taxon">
     <files>
       <location>val_species.txt</location>
     </files>
@@ -32,7 +32,7 @@
 		<field index="26" term="http://rs.tdwg.org/dwc/terms/institutionCode"/>
 		<field index="27" term="http://rs.tdwg.org/dwc/terms/collectionCode"/>
   </core>
-  <extension encoding="utf-8" fieldsTerminatedBy="\t" linesTerminatedBy="\n" fieldsEnclosedBy='"' ignoreHeaderLines="1" rowType="http://rs.gbif.org/terms/1.0/VernacularName">
+  <extension encoding="utf-8" fieldsTerminatedBy="," linesTerminatedBy="\n" fieldsEnclosedBy='"' ignoreHeaderLines="1" rowType="http://rs.gbif.org/terms/1.0/VernacularName">
 	<files>
 		<location>val_vernacular.txt</location>
 	</files>

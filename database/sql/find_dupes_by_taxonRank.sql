@@ -6,6 +6,8 @@ GROUP BY
     "scientificName", "taxonRank"
 HAVING 
     COUNT(*) > 1
-	AND "taxonRank" = 'family'
+	AND "taxonRank" = 'genus'
 ORDER BY 
 	dupes desc, "taxonRank" desc;
+
+--select * from val_species;

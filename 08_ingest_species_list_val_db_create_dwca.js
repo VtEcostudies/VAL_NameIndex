@@ -79,7 +79,7 @@ if (!fileName) {fileName = baseName;}
 //fileName = 'Moths_Errata';
 
 var dbInsert = 1;
-var dbUpdate = 0;
+var dbUpdate = 1;
 
 var subDir = baseName + '/';
 
@@ -121,7 +121,6 @@ getColumns()
         for (var i=0; i<src.rows.length; i++) {
           await addCanonicalName(src.rows[i], logStream); //parse scientificName into canonicalName and add to src object
           await matchGbifSpecies(src.rows[i], i)
-          //matchGbifSpecies(src.rows[i], i)
             .then(async (gbf) => {
               var rankMatch = false;
               if (gbf.results) {
@@ -143,7 +142,6 @@ getColumns()
               }
               if (gbf.results && rankMatch) { //found a match - EXACT or FUZZY?
                 await getGbifSpecies(gbf, gbf.src, gbf.idx)
-                //getGbifSpecies(gbf, gbf.src, gbf.idx)
                   .then((res) => {processResults(res, res.src);})
                   .catch((err) => {
                     log(`${err.idx} | getGbifSpecies ERROR | ${err.src.scientificName} | ${JSON.stringify(err)}`, logStream, true);
@@ -152,7 +150,6 @@ getColumns()
                   });
               } else { //empty or incorrect result - try to find the source object another way
                 await findGbifSpecies(gbf.src, gbf.idx)
-                //findGbifSpecies(gbf.src, gbf.idx)
                   .then((res) => {
                       processResults(res.self, res.src);
                   })
@@ -264,26 +261,30 @@ function matchGbifSpecies(src, idx) {
   };
 
   return new Promise((resolve, reject) => {
-    Request.get(parms, (err, res, body) => {
-      if (err) {
-        log(`matchGbifSpecies | err.code: ${err.code}`, errStream);
-        err.src = src;
-        err.idx = idx;
-        reject(err);
-      } else {
-        log(`${idx} | matchGbifSpecies(${src.scientificName}) | ${res.statusCode} | ${body.usageKey?1:0} results found.`, logStream, true);
-        /*
-        log(`matchGbifSpecies RESULT:
-          GBIF RANK:${body.rank.toLowerCase()}
-          SOURCE RANK:${src.taxonRank.toLowerCase()}
-          COMPARISON:${body.rank.toLowerCase()==src.taxonRank.toLowerCase()}`, logStream);
-        */
-        body.results = body.usageKey?1:0;
-        body.src = src; //attach incoming source row-object to returned object for downstream use
-        body.idx = idx; //attach incoming row index to returned object for downstream use
-        resolve(body);
-      }
-    });
+    if (!name) {
+      reject({'message':'ERROR: scientificName is EMPTY'});
+    } else {
+      Request.get(parms, (err, res, body) => {
+        if (err) {
+          log(`matchGbifSpecies | err.code: ${err.code}`, errStream);
+          err.src = src;
+          err.idx = idx;
+          reject(err);
+        } else {
+          log(`${idx} | matchGbifSpecies(${src.scientificName}) | ${res.statusCode} | ${body.usageKey?1:0} results found.`, logStream, true);
+          /*
+          log(`matchGbifSpecies RESULT:
+            GBIF RANK:${body.rank.toLowerCase()}
+            SOURCE RANK:${src.taxonRank.toLowerCase()}
+            COMPARISON:${body.rank.toLowerCase()==src.taxonRank.toLowerCase()}`, logStream);
+          */
+          body.results = body.usageKey?1:0;
+          body.src = src; //attach incoming source row-object to returned object for downstream use
+          body.idx = idx; //attach incoming row index to returned object for downstream use
+          resolve(body);
+        }
+      });
+    }
   });
 }
 

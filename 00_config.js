@@ -40,10 +40,11 @@ For each new species dataset the following steps must be done:
 exports.paths = {
   dwcaDir: "../",
   dataDir: "../datasets/",
-  //make fileName null or empty to use baseName for fileName in downstream processing
-  fileName: "Moths_Vermont_V5",
+  //----------------------fileNames
+  //fileName: "Moths_Vermont_V5",
+  //----------------------baseNames
   //baseName: 'Bees_Vermont'
-  baseName: "Moths_Vermont"
+  //baseName: "Moths_Vermont"
   //baseName: "Hippoboscidae_Vermont"
   //baseName: 'spidersVTlist'
   //baseName: 'WhirligigBeetles'
@@ -63,7 +64,7 @@ exports.paths = {
   //baseName: 'Syrphids_Vermont'
   //baseName: 'Error_Corrections'
   //baseName: 'Springtails_VT'
-  //baseName: 'Bryophytes_VT'
+  baseName: 'Bryophytes_Vermont'
   //baseName: 'Vermont_Conservation_Missing' //the not-found taxa from adding Vermont_Conservation_Status
   //baseName: 'Cluster_Flies_Vermont'
   //baseName: 'Bark_Beetles_Vermont'
