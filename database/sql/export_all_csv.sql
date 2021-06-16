@@ -31,7 +31,7 @@ copy (select
     "institutionCode",
     "collectionCode"
 	from val_species)
-to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_species.csv'
+to 'C:\Users\jloomis\Documents\VCE\VAL_Data_Pipelines\VAL_NameIndex\repo\database\export\val_species.csv'
 with (FORMAT CSV, HEADER TRUE, FORCE_QUOTE *, NULL '|');
 
 copy (select
@@ -46,7 +46,7 @@ copy (select
 "source",
 "preferred"
 from val_vernacular)
-to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_vernacular.csv' 
+to 'C:\Users\jloomis\Documents\VCE\VAL_Data_Pipelines\VAL_NameIndex\repo\database\export\val_vernacular.csv' 
 with (FORMAT CSV, HEADER TRUE, FORCE_QUOTE *, NULL '|');
 
 copy (select
@@ -59,5 +59,5 @@ copy (select
 "globalRank",
 "federalList"
 from val_conservation_status)
-to 'C:\Users\jloomis\Documents\VCE\VAL_NameIndex\repo\database\export\val_conservation_status.csv' 
+to 'C:\Users\jloomis\Documents\VCE\VAL_Data_Pipelines\VAL_NameIndex\repo\database\export\val_conservation_status.csv' 
 with (FORMAT CSV, HEADER TRUE, FORCE_QUOTE *, NULL '|');

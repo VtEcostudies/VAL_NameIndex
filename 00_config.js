@@ -10,7 +10,7 @@ This process and system were purpose-built after trying to do without one. These
 - data inputs are species lists (checklists) hand-built by VAL scientists
 - a set of node.js processing scripts are used to ingest checklists into Postgres
 - we export a complete species registry from postgres (also a DwCA-format file)
-- deliver the registry to the VAL server and buld the nameindex from it
+- deliver the registry to the VAL server and build the nameindex from it
 
 Originally, we bootstrapped a dataset from GBIF by downloading all species within a geo bounding-box of VT.
 A series of steps no longer used - files 01 thru 05 - resulted from the learning process of massaging the
@@ -26,15 +26,29 @@ For each new species dataset the following steps must be done:
   - Process incoming records
   - Match each record against GBIF to get a GBIF taxonId
   - Insert into the local Postgres db (you must set the flag dbInsert=1)
-  - Write each record matched to a new DwCA file with all fields completed
+  - Write each record matched to a new output DwCA file with all fields filled (for publishing to our IPT)
   - Write each record not matched to err_{incoming_file_name}
 
 2) node 09_ingest_species_list_new_not_found.js
+  - We created this ad-hoc procedure to deal with taxa not found in GBIF, or for which VCE's scientists have
+    expertise that clearly finds GBIF's taxonomy to be in error.
+  - To do this, and since these taxa lack a GBIF taxonKey, we must create a custom taxonId in val_species
+  -
 
 3) node 06_find_missing_gbif_id_add_to_val_db.js
   - Queries our db and finds missing entries in the taxonomic tree
   - Uses GBIF API to fill in missing taxa
   - Use repeatedly to complete the process.
+
+NEW: Each time we update Occurrences in VAL DE, we must update val_species using the SPECIES_LIST downlaoded
+with GBIF Occurrences. We created a new workflow for this:
+
+1) Download GBIF SPECIES_LIST and put into the folder ../datasets/gbif_species_dwca/.
+
+2) Change baseName, below, to gbif_species_dwca. If you wish to use separate fileNames, over time
+set fileName, below, to the name of your new GBIF SPECIES_LIST download.
+
+3)
 
 */
 exports.paths = {
@@ -43,6 +57,7 @@ exports.paths = {
   //----------------------fileNames
   //fileName: "Moths_Vermont_V5",
   //----------------------baseNames
+  baseName: 'gbif_species_dwca'
   //baseName: 'Bees_Vermont'
   //baseName: "Moths_Vermont"
   //baseName: "Hippoboscidae_Vermont"
@@ -64,7 +79,7 @@ exports.paths = {
   //baseName: 'Syrphids_Vermont'
   //baseName: 'Error_Corrections'
   //baseName: 'Springtails_VT'
-  baseName: 'Bryophytes_Vermont'
+  //baseName: 'Bryophytes_Vermont'
   //baseName: 'Vermont_Conservation_Missing' //the not-found taxa from adding Vermont_Conservation_Status
   //baseName: 'Cluster_Flies_Vermont'
   //baseName: 'Bark_Beetles_Vermont'

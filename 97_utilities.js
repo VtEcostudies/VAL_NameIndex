@@ -135,7 +135,7 @@ function parseSciName(src, stream=null) {
       log(`parseSciName|${src.scientificName}|${sciName}`, stream);
     }
 
-    //remove double spaces
+    //replace double spaces with single spaces
     regex = /  /g;
     if (regex.test(sciName)) {
       sciName = sciName.replace(regex, " ");

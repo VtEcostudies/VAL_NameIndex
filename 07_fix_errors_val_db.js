@@ -23,46 +23,63 @@
 */
 
 //https://nodejs.org/api/readline.html
-var fs = require('fs');
-var Request = require("request");
-var paths = require('./00_config').paths;
+const fs = require('fs');
+const Request = require("request");
+const moment = require('moment');
+const paths = require('./00_config').paths;
 const query = require('./database/db_postgres').query;
 const pgUtil = require('./database/db_pg_util');
-const gbifToValDirect = require('./98_gbif_to_val_columns').gbifToValDirect;
+const gbifToValDirect = require('./VAL_Utilities/98_gbif_to_val_columns').gbifToValDirect;
+const log = require('./VAL_Utilities/97_utilities').log;
 var staticColumns = [];
 
 console.log(`config paths: ${JSON.stringify(paths)}`);
 
-var dDir = paths.dwcaDir; //path to directory holding extracted GBIF DwCA species files
-var wStream = []; //array of write streams
+var dwcaDir = paths.dwcaDir; //path to directory holding extracted GBIF DwCA species files
+var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
+var baseName = '00_Fix_VAL_Taxa_Errors';
+var subDir = `${baseName}/`; //put output into a sub-dir so we can easily find it
+var logFileName = 'fix_taxa_errors' + moment().format('YYYYMMDD-HHMMSSS') + '.txt';
+var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`, {flags: 'w'});
+var errFileName = 'err_' + baseName + '.txt';
+//var errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`, {flags: 'w'});
 
-const err_id = 9; //we 'fix' a variety of 'errors' here. the index of the one to fix.
+const err_id = 11; //we 'fix' a variety of 'errors' here. the index of the one to fix.
+const update = 1; //flag whether to update or just compare val vs gbif
+var errCount = 0;
 
 getColumns()
   .then(res => {
     getValErrors(err_id)
-      .then(res => {
+      .then(async res => {
         console.log('Error row count:', res.rowCount, 'First row:', res.rows[0]);
         for (var i=0; i<res.rowCount; i++) {
-          getGbifSpecies(res.rows[i].gbifId)
-            .then(res => {
-              updateValTaxon(res, err_id)
-                .then(res => {})
-                .catch(err => {
-                  console.log('updateValTaxon ERROR | gbifId:', err.val?err.val.taxonId:'err.val is empty', '|', err.message);
-                })
+          await getGbifSpecies(i, res.rows[i])
+            .then(async res => {
+              if (update) {
+                await compareRecords(res.idx, res.val, res.gbif);
+                await updateValTaxon(res.idx, res.val, res.gbif, err_id)
+                  .then(res => {
+                    log(`${res.idx} | updateValTaxon SUCCESS | gbifId:${res.new.gbifId} | `, logStream, true);
+                  })
+                  .catch(err => {
+                    log(`${res.idx} | updateValTaxon ERROR | gbifId:${err.new?err.new.taxonId:'err.new is empty'} | ${err.message}`, logStream, true);
+                  })
+              } else {
+                await compareRecords(res.idx, res.val, res.gbif);
+              }
             })
             .catch(err => {
-              console.log('getGbifSpecies ERROR |', err);
+              console.log('getGbifSpecies ERROR |', err.message);
             })
         }
       })
       .catch(err => {
-        console.log('getValErrors ERROR |', err);
+        console.log('getValErrors ERROR |', err.message);
       });
   })
   .catch(err => {
-    console.log('getColumns ERROR |', err);
+    console.log('getColumns ERROR |', err.message);
   })
 
 function getColumns() {
@@ -82,10 +99,49 @@ async function getValErrors(fix_id=1) {
   select_err[7] = `select "gbifId" from val_species where split_part("scientificName", ' ', 4) != '';`;
   select_err[8] = `select "gbifId" from val_species where split_part("scientificName", ' ', 3) != '' and "taxonRank" NOT IN ('subspecies','variety','form')`;
   select_err[9] = `select "gbifId" from val_species where split_part("scientificName", '?', 2) != '';`;
+  select_err[10] = `select * from val_species where "taxonId" != "acceptedNameUsageId" and "taxonomicStatus" = 'accepted';`;
+  select_err[11] = `select * from val_species where "taxonRank" IN ('species', 'subspecies', 'variety');`;
   return await query(select_err[fix_id]);
 }
 
-function getGbifSpecies(key) {
+function compareRecords(i, val, gbif) {
+  /*
+  if (res.val.taxonomicStatus.toLowerCase() == res.gbif.taxonomicStatus.toLowerCase()) {
+    log(`===================>>>${res.idx}|MATCHING taxonomicStatus|${res.val.scientificName}`, logStream, true);
+  }*/
+  //console.log(gbif);
+  var msg = 0;
+  for (var key in val) {
+    if (gbif[key]) {
+      //console.log(key);
+      var v = val[key]; v = v?v:'';
+      var g = gbif[key]; g = g?g:'';
+      if (key != 'scientificName' && v.toLowerCase() != g.toLowerCase()) {
+        log(`${i} | ${key} | VAL:${val[key]} | GBIF:${gbif[key]}`, logStream, true); msg++;
+      }
+    }
+  }
+  if (val.scientificName != gbif.canonicalName) {
+    log(`${i} | canonicalName | VAL:${val.scientificName} | GBIF:${gbif.canonicalName}`, logStream, true); msg++;
+  }
+  if (gbif.acceptedId && val.acceptedNameUsageId != gbif.acceptedId) {
+    log(`${i} | acceptedNameUsageId | VAL:${val.acceptedNameUsageId} | GBIF:${gbif.acceptedId}`, logStream, true); msg++;
+  }
+  if (gbif.accepted && val.acceptedNameUsage != gbif.accepted) {
+    log(`${i} | acceptedNameUsage | VAL:${val.acceptedNameUsage} | GBIF:${gbif.accepted}`, logStream, true); msg++;
+  }
+  if (gbif.parentKey && val.parentNameUsageId != gbif.parentKey) {
+    log(`${i} | parentNameUsageId | VAL:${val.parentNameUsageId} | GBIF:${gbif.parentKey}`, logStream, true); msg++;
+  }
+  if (msg) {
+    errCount++;
+    log(`${errCount} | End compareRecords | gbifId:${val.gbifId} | rank:${val.taxonRank} | name:${val.scientificName}`, logStream, true);
+    log(`-------------------------------------------------------------------------------------`, logStream, true);
+  }
+}
+
+function getGbifSpecies(idx, val) {
+  var key = val.gbifId;
   var parms = {
     url: `http://api.gbif.org/v1/species/${key}`,
     json: true
@@ -94,19 +150,30 @@ function getGbifSpecies(key) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err) {
+        err.val = val;
+        err.idx = idx;
         reject(err);
       } else if (res.statusCode > 299) {
-        console.log(`getGbifSpecies(${key}) | ${res.statusCode}`);
+        //console.log(`getGbifSpecies(${key}) | ${res.statusCode}`);
+        res.val = val;
+        res.idx = idx;
         reject(res);
       } else {
-        console.log(`getGbifSpecies(${key}) | ${res.statusCode}`);
-        resolve(body);
+        var ret = {};
+        //console.log(`getGbifSpecies(${key}) | ${res.statusCode}`);
+        ret.val = val;
+        ret.idx = idx;
+        ret.gbif = body;
+        resolve(ret);
       }
     });
   });
 }
 
-async function updateValTaxon(gbif, fix_id=1) {
+/*
+  Update val_species in specific ways for specific fix_ids.
+*/
+async function updateValTaxon(idx, old, gbif, fix_id=1) {
   //translate gbif api values to val columns
   console.log(`taxonId = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`);
   var qryColumns = [];
@@ -127,15 +194,21 @@ async function updateValTaxon(gbif, fix_id=1) {
     qryColumns[fix_id] = pgUtil.parseColumns(val, 2, [val.gbifId], staticColumns);
     sql_update[fix_id] = `update val_species set (${qryColumns[fix_id].named}) = (${qryColumns[fix_id].numbered}) where "gbifId"=$1 returning "taxonId"`;
   }
-  console.log(sql_update[fix_id], qryColumns[fix_id].values);
+  log(JSON.stringify(sql_update[fix_id]) + JSON.stringify(qryColumns[fix_id].values), logStream, true);
   return new Promise((resolve, reject) => {
     query(sql_update[fix_id], qryColumns[fix_id].values)
       .then(res => {
+        res.gbif = gbif;
+        res.old = old;
+        res.new = val;
+        res.idx = idx;
         resolve(res);
       })
       .catch(err => {
         err.gbif = gbif;
-        err.val = val;
+        err.old = old;
+        err.new = val;
+        err.idx = idx;
         reject(err);
       })
   })

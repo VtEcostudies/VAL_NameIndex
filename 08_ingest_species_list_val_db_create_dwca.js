@@ -56,14 +56,14 @@ const moment = require('moment');
 const paths = require('./00_config').paths;
 const query = require('./database/db_postgres').query;
 const pgUtil = require('./database/db_pg_util');
-const csvFileTo2DArray = require('./99_parse_csv_to_array').csvFileTo2DArray;
-const gbifToValIngest = require('./98_gbif_to_val_columns').gbifToValIngest;
-const addCanonicalName = require('./97_utilities').addCanonicalName;
-const addTaxonRank = require('./97_utilities').addTaxonRank;
-const log = require('./97_utilities').log;
-const jsonToString = require('./97_utilities').jsonToString;
+const csvFileToArrayOfObjects = require('./VAL_Utilities/99_parse_csv_to_array').csvFileTo2DArray;
+const gbifToValIngest = require('./VAL_Utilities/98_gbif_to_val_columns').gbifToValIngest;
+const addCanonicalName = require('./VAL_Utilities/97_utilities').addCanonicalName;
+const addTaxonRank = require('./VAL_Utilities/97_utilities').addTaxonRank;
+const log = require('./VAL_Utilities/97_utilities').log;
+const jsonToString = require('./VAL_Utilities/97_utilities').jsonToString;
 
-const inpFileDelim = ",";
+const inpFileDelim = "\t";
 const outFileDelim = ",";
 
 var staticColumns = [];
@@ -78,8 +78,9 @@ if (!fileName) {fileName = baseName;}
 //fileName = 'species_Propylea_quatuordecimpunctata';
 //fileName = 'Moths_Errata';
 
-var dbInsert = 1;
-var dbUpdate = 1;
+var dbInsert = 0; //insert all taxa into val_species db
+var dbUpdate = 0; //update all taxa in val_species db
+var dbQuery = !dbInsert && !dbUpdate ? 1 : 0; //query val_species db for missing taxa (and put missing items to file)
 
 var subDir = baseName + '/';
 
@@ -93,11 +94,13 @@ if (inpFileDelim == ",") {
 var outFileName = 'val_' + inpFileName;
 var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
 var errFileName = 'err_' + inpFileName;
+var qryFileName = 'qry_' + inpFileName;
 
 //Don't create outStream here. An empty outStream var flags the writing header to file below.
 var outStream = null;
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`);
 var errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`);
+var qryStream = fs.createWriteStream(`${dataDir}${subDir}${qryFileName}`);
 
 var headRow = true;
 var rowCount = 0; //count records available
@@ -181,11 +184,11 @@ function getColumns() {
 }
 
 /*
-Parse the input file into a 2D array for processing.
+Parse the input file into an array of objects for processing.
 */
 async function getSpeciesFile(inpFileName) {
   try {
-    return await csvFileTo2DArray(inpFileName, inpFileDelim, headRow, true);
+    return await csvFileToArrayOfObjects(inpFileName, inpFileDelim, headRow, true);
   } catch(err) {
     throw(err);
   }
@@ -200,7 +203,7 @@ function processResults(gbf, src) {
     log(`gbifToValIngest | gbifId:${gbf.key} | GBIF scientificName:${gbf.scientificName} | GBIF canonicalName:${gbf.canonicalName} | GBIF rank:${gbf.rank}`, logStream);
 
     var val = gbifToValIngest(gbf, src);
-    writeResultToFile(val);
+    writeObjectToDelimitedFlatFile(val, outFileDelim);
     if (dbInsert) {
       insertValTaxon(val, gbf.idx)
         .then(ins => {
@@ -459,7 +462,7 @@ function writeHeaderToFile(val) {
 This assumes that the incoming object is one line of data that was parsed into
 named fields that are DwCA compliant.
 */
-function writeResultToFile(val) {
+function writeObjectToDelimitedFlatFile(val, delim=',') {
   var out = '';
   var fld = '';
 
@@ -478,11 +481,11 @@ function writeResultToFile(val) {
         fld = `"${fld}"`;
       }
     }
-    out += fld + outFileDelim;
+    out += fld + delim;
   }
   //write output to file
   out = out.replace(/(^,)|(,$)/g, "");//remove leading, trailing delimiter
-  log(`writeResultToFile | ${out}`, logStream);
+  log(`writeObjectToDelimitedFlatFile | ${out}`, logStream);
   outStream.write(`${out}\n`);
   outCount++;
 }

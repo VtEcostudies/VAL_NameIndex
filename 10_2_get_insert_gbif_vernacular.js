@@ -27,23 +27,25 @@ const log = require('./97_utilities').log;
 var staticColumns = [];
 
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
-var logFileName = 'get_insert_vernacular_names_' + moment().format('YYYYMMDD-HHMMSSS') + '.txt';
 var debug = true; //flag console output for debugging
 var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
-var offset = 0;
+var offset = 100;
 var limit = 25000;
 var where = 'true';//`"createdAt"::date > now()::date - interval '30 day'`;
 
-logStream = fs.createWriteStream(`${dataDir}/${logFileName}`, {flags: 'w'});
+var dataDir = paths.dataDir; //path to directory holding inp data files - INCLUDING TRAILING SLASH
+var subDir = '00_vernacular_names/';
+var logFileName = 'get_insert_gbif_vernacular_names_' + moment().format('YYYYMMDD-HHMMSSS') + '.txt';
+var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`);
 
-log(`config paths: ${JSON.stringify(paths)}`, logStream);
-log(`output file name ${logFileName}`, logStream);
+log(`log file: ${dataDir}${subDir}${logFileName}`, logStream, true);
 
 getColumns()
   .then(res => {
-    getValTaxa()
+    //getValTaxa()
+    getValMissing()
       .then(async res => {
         log(`${res.rowCount} val_species taxa | First row: ${JSON.stringify(res.rows[0])}`, logStream, true);
         for (var i=0; i<res.rowCount; i++) {
@@ -89,9 +91,24 @@ NOTE: taxonId and acceptedNameUsageId are text, while gbifId is integer.
 */
 async function getValTaxa() {
   var text = '';
-  text = `select s."taxonId", s."scientificName"
+  text = `select s."taxonId", s."scientificName", s."taxonRank"
           from val_species s
           where ${where}
+          offset ${offset}
+          limit ${limit}`;
+
+  return await query(text);
+}
+
+/*
+Get VAL taxa having no vernacular name in val_vernacular.
+*/
+async function getValMissing() {
+  var text = '';
+  text = `select s."taxonId", s."scientificName", s."taxonRank"
+          from val_species s
+          left join val_vernacular v on s."taxonId"=v."taxonId"
+          where v."taxonId" is null
           offset ${offset}
           limit ${limit}`;
 
@@ -112,7 +129,7 @@ function getGbifVernacularNames(val) {
         reject(err);
       } else {
         if (body) {
-          log(`RESULT: getGbifVernacularNames(${val.taxonId}) | ${val.scientificName} | ${res.statusCode} | count: ${body?body.results.length:null}`, logStream, debug);
+          log(`RESULT: getGbifVernacularNames(${val.taxonId}) | ${val.scientificName} | ${res.statusCode} | count: ${body?body.results.length:0}`, logStream, debug);
           body.val = val;
           resolve(body);
         } else {
