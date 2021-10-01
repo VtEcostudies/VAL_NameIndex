@@ -27,7 +27,7 @@ const log = require('./97_utilities').log;
 var staticColumns = [];
 
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
-var logFileName = 'get_update_vernacular_names_' + moment().format('YYYYMMDD-HHMMSSS') + '.txt';
+var logFileName = 'get_update_vernacular_names_' + moment().format('YYYYMMDD-HHmmsss') + '.txt';
 var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;

@@ -27,7 +27,7 @@ var dataDir = paths.dataDir; //path to directory holding inp data files - INCLUD
 var subDir = '00_vernacular_names/';
 var fileName = 'update_species_to_vernacular.txt';
 
-var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + fileName;
+var logFileName = 'log_' + moment().format('YYYYMMDD-HHmmsss') + '_' + fileName;
 var errFileName = 'err_' + fileName;
 
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`);

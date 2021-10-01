@@ -3,7 +3,7 @@
 
   Project: VAL_Species
 
-  File: 10_1_get_insert_inat_vernacular.js
+  File: 10_3_get_insert_inat_vernacular.js
 
   Purpose: Retrieve vernacular names from iNaturalist and insert into val_vernacular.
 
@@ -33,25 +33,29 @@ var staticColumns = [];
 
 const process = require('child_process');
 
-var logsDir = "../logs_vernacular/";
-var logFileName = 'get_insert_inat_vernacular_names_' + moment().format('YYYYMMDD-HHMMSSS') + '.txt';
-var debug = true; //flag console output for debugging
+const logsDir = "../logs_vernacular/";
+const logFileName = 'get_insert_inat_vernacular_names_' + moment().format('YYYYMMDD-HHmmsss') + '.txt';
+const errFileName = 'err_' + logFileName;
+const debug = true; //flag console output for debugging
 var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
-var offset = 0;
-var limit = 25000;
+var offset = 112;
+var limit = 88; //25000;
 var delay = 2; //in seconds (on Windows)
 var where = 'true';//`"createdAt"::date > now()::date - interval '7 day'`;
 
 logStream = fs.createWriteStream(`${logsDir}/${logFileName}`, {flags: 'w'});
+logStream = fs.createWriteStream(`${logsDir}/${errFileName}`, {flags: 'w'});
 
 log(`config paths: ${JSON.stringify(paths)}`, logStream);
-log(`output file name ${logFileName}`, logStream);
+log(`log file: ${logsDir}${logFileName}`, logStream, true);
+log(`err file: ${logsDir}${errFileName}`, logStream, true);
 
 getColumns()
   .then(res => {
-    getValTaxa()
+    //getValTaxa()
+    getValMissing()
       .then(async res => {
         log(`${res.rowCount} val_species taxa | First row: ${JSON.stringify(res.rows[0])}`, logStream, true);
         for (var i=0; i<res.rowCount; i++) {
@@ -109,6 +113,22 @@ async function getValTaxa() {
   return await query(text);
 }
 
+/*
+Get VAL taxa having no vernacular name in val_vernacular.
+*/
+async function getValMissing() {
+  var text = '';
+  text = `select s."taxonId", s."scientificName", s."taxonRank"
+          from val_species s
+          left join val_vernacular v on s."taxonId"=v."taxonId"
+          where v."taxonId" is null
+          and "taxonRank" IN ('species','subspecies','variety')
+          offset ${offset}
+          limit ${limit}`;
+
+  return await query(text);
+}
+
 function getInatVernacularNames(val) {
 
   var parms = {
@@ -124,6 +144,7 @@ function getInatVernacularNames(val) {
       } else {
         if (body) {
           log(`RESULT: getInatVernacularNames(${val.scientificName} | ${res.statusCode} | count: ${body.results?body.results.length:null}`, logStream, debug);
+          //console.log(body);
           body.val = val;
           resolve(body);
         } else {

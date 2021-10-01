@@ -78,7 +78,7 @@ var dbUpdate = 0; //BE CAREFUL - we use our own taxonIds in here. If you dont gu
 var subDir = baseName + '/';
 var inpFileName = 'new_' + fileName + '.csv'; //only apply not-found taxa from files prefixed with 'new_'
 var outFileName = 'val_' + inpFileName;
-var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
+var logFileName = 'log_' + moment().format('YYYYMMDD-HHmmsss') + '_' + inpFileName;
 var errFileName = 'err_' + inpFileName;
 
 //Don't create outStream here. An empty outStream is used later to flag the writing of a header to file.

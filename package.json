@@ -1,7 +1,7 @@
 {
-  "name": "val_dwca_split",
+  "name": "val_name_index",
   "version": "1.0.0",
-  "description": "Parse aggregate GBIF download DWcA into individual datasets/providers for updload and ingestion.",
+  "description": "Build a registry of species names for Vermont.",
   "main": "index.js",
   "dependencies": {
     "archiver": "^3.1.1",

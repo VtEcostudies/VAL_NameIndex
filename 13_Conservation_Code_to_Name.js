@@ -34,7 +34,7 @@ var subDir = baseName + '/';
 var inpFileName = baseName + '.csv';
 inpFileName = 'val_species_state_rank.txt';
 var outFileName = '13_out_' + inpFileName;
-var logFileName = '13_log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
+var logFileName = '13_log_' + moment().format('YYYYMMDD-HHmmsss') + '_' + inpFileName;
 var errFileName = '13_err_' + inpFileName;
 var outStream = null; //fs.createWriteStream(`${dataDir}${subDir}${outFileName}`, {flags: 'w'});
 var errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`, {flags: 'w'});
@@ -49,7 +49,7 @@ var test = 0;
 
 function test_parseSciName(src={scientificName:"Xestia (Pachnobia) homogena spp. heterogena"}) {
   console.log(parseSciName(src));
-  console.log(moment().format('YYYYMMDD-HHMMSSS'))
+  console.log(moment().format('YYYYMMDD-HHmmsss'))
   process.exit();
 }
 if (sciTest) test_parseSciName({scientificName:"Papaipema sp. 2 nr. pterisii"});

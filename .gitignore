@@ -6,6 +6,7 @@ package-lock.json
 
 #exclude
 /database/pg_dump/*.sql
+/database/pg_dump/*.backup
 /node_modules
 /database/export
 

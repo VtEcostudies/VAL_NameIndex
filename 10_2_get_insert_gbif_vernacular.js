@@ -26,21 +26,24 @@ const pgUtil = require('./database/db_pg_util');
 const log = require('./97_utilities').log;
 var staticColumns = [];
 
-var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
 var debug = true; //flag console output for debugging
 var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
-var offset = 100;
-var limit = 25000;
+var offset = 0;
+var limit = 100;
 var where = 'true';//`"createdAt"::date > now()::date - interval '30 day'`;
 
-var dataDir = paths.dataDir; //path to directory holding inp data files - INCLUDING TRAILING SLASH
-var subDir = '00_vernacular_names/';
-var logFileName = 'get_insert_gbif_vernacular_names_' + moment().format('YYYYMMDD-HHMMSSS') + '.txt';
-var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`);
+const dataDir = paths.dataDir; //path to directory holding inp data files - INCLUDING TRAILING SLASH
+const subDir = '00_vernacular_names/';
+const logsDir = "../logs_vernacular/";
+const logFileName = 'get_insert_gbif_vernacular_names_' + moment().format('YYYYMMDD-HHmmsss') + '.txt';
+const errFileName = 'err_' + logFileName;
+const logStream = fs.createWriteStream(`${logsDir}${logFileName}`);
+const errStream = fs.createWriteStream(`${logsDir}${errFileName}`);
 
-log(`log file: ${dataDir}${subDir}${logFileName}`, logStream, true);
+log(`log file: ${logsDir}${logFileName}`, logStream, true);
+log(`err file: ${logsDir}${errFileName}`, logStream, true);
 
 getColumns()
   .then(res => {
@@ -60,18 +63,20 @@ getColumns()
                       const msg = `SUCCESS: insertValVernacular | ${res.val.taxonId} | ${res.val.scientificName} | ${res.val.vernacularName}`;
                       log(msg, logStream, true); //just echo successes
                     })
-                    .catch(err => {
+                    .catch(err => { //error on insertValVernacular
                       errCount++;
                       const msg = `ERROR: insertValVernacular | ${err.val?err.val.taxonId:undefined} | ${err.val?err.val.scientificName:undefined} | ${err.val?err.val.vernacularName:undefined} | error:${err.message}`;
                       log(msg, logStream, debug);
+                      log(`${err.val.taxonId}|${err.val.scientificName}\n`, errStream);
                     })
                 }
-              } //end for-loop
+              }
             })
-            .catch(err => {
+            .catch(err => { //error on getGbifVernacularNames
               log(`ERROR: getGbifVernacularNames | ${err.val.taxonId} | ${err.val.scientificName} | ${err.message}`, logStream, debug);
+              log(`${err.val.taxonId}|${err.val.scientificName}\n`, errStream);
             })
-        }
+        } //end for-loop
       })
       .catch(err => {
         log(`ERROR: getValTaxa | ${err.message}`, logStream, debug);

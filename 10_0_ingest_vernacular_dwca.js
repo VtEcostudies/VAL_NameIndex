@@ -44,7 +44,7 @@ if (inpFileDelim == ",") {
   inpFileName = fileName + '.txt';
 }
 
-var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
+var logFileName = 'log_' + moment().format('YYYYMMDD-HHmmsss') + '_' + inpFileName;
 var errFileName = 'err_' + inpFileName;
 
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`);

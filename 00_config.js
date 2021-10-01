@@ -43,12 +43,20 @@ For each new species dataset the following steps must be done:
 NEW: Each time we update Occurrences in VAL DE, we must update val_species using the SPECIES_LIST downlaoded
 with GBIF Occurrences. We created a new workflow for this:
 
-1) Download GBIF SPECIES_LIST and put into the folder ../datasets/gbif_species_dwca/.
+1) Download and extract GBIF SPECIES_LIST and put into the folder ../datasets/gbif_species_dwca/ with the
+same file name, gbif_species_dwca.txt (gbif always send them tab-delimited with a .csv extension!)
 
 2) Change baseName, below, to gbif_species_dwca. If you wish to use separate fileNames, over time
 set fileName, below, to the name of your new GBIF SPECIES_LIST download.
 
-3)
+3) BACKUP THE val_species table before you do step (4) below
+
+4) node 08_ingest_species_list_val_db_create_dwca.js
+  - set the INSERT flag, unset the UPDATE flag:
+      var dbInsert = 1; //insert all taxa into val_species db
+      var dbUpdate = 0; //update all taxa in val_species db
+  - use this with a GBIF species DwCA just as we would our own source species lists
+  - logging to screen and file shows how many new INSERTS
 
 */
 exports.paths = {
@@ -58,6 +66,9 @@ exports.paths = {
   //fileName: "Moths_Vermont_V5",
   //----------------------baseNames
   baseName: 'gbif_species_dwca'
+  //baseName = 'Add_Hoc_Taxa';
+  //fileName = 'species_Propylea_quatuordecimpunctata';
+  //fileName = 'Moths_Errata';
   //baseName: 'Bees_Vermont'
   //baseName: "Moths_Vermont"
   //baseName: "Hippoboscidae_Vermont"

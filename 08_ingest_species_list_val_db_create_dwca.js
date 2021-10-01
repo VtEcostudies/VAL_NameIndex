@@ -56,33 +56,32 @@ const moment = require('moment');
 const paths = require('./00_config').paths;
 const query = require('./database/db_postgres').query;
 const pgUtil = require('./database/db_pg_util');
-const csvFileToArrayOfObjects = require('./VAL_Utilities/99_parse_csv_to_array').csvFileTo2DArray;
+const csvFileToArrayOfObjects = require('./VAL_Utilities/99_parse_csv_to_array').csvFileToArrayOfObjects;
 const gbifToValIngest = require('./VAL_Utilities/98_gbif_to_val_columns').gbifToValIngest;
 const addCanonicalName = require('./VAL_Utilities/97_utilities').addCanonicalName;
 const addTaxonRank = require('./VAL_Utilities/97_utilities').addTaxonRank;
 const log = require('./VAL_Utilities/97_utilities').log;
 const jsonToString = require('./VAL_Utilities/97_utilities').jsonToString;
 
-const inpFileDelim = "\t";
-const outFileDelim = ",";
-
 var staticColumns = [];
 
 console.log(`config paths: ${JSON.stringify(paths)}`);
 
-var dataDir = paths.dataDir; //path to directory holding source data files - INCLUDING TRAILING SLASH
-var baseName = paths.baseName; //moved this setting to 00_config.js, as it's used in downstream processing
+const dataDir = paths.dataDir; //path to directory holding source data files - INCLUDING TRAILING SLASH
+const baseName = paths.baseName; //moved this setting to 00_config.js, as it's used in downstream processing
+const subDir = baseName + '/';
 var fileName = paths.fileName;
 if (!fileName) {fileName = baseName;}
-//baseName = 'Add_Hoc_Taxa';
-//fileName = 'species_Propylea_quatuordecimpunctata';
-//fileName = 'Moths_Errata';
 
-var dbInsert = 0; //insert all taxa into val_species db
+var retry = 1;
+if (retry) {fileName = 'retry_' + fileName;}
+
+var dbInsert = 1; //insert all taxa into val_species db
 var dbUpdate = 0; //update all taxa in val_species db
 var dbQuery = !dbInsert && !dbUpdate ? 1 : 0; //query val_species db for missing taxa (and put missing items to file)
 
-var subDir = baseName + '/';
+const inpFileDelim = "\t"; //",";
+const outFileDelim = inpFileDelim; //",";
 
 if (inpFileDelim == ",") {
   inpFileName = fileName + '.csv';
@@ -91,16 +90,17 @@ if (inpFileDelim == ",") {
 }
 
 //inpFileName = 'fix_' + inpFileName; //use this to handle small update files in the same directory
+const dateTime = moment().format('YYYYMMDD-HHmmsss');
 var outFileName = 'val_' + inpFileName;
-var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
-var errFileName = 'err_' + inpFileName;
-var qryFileName = 'qry_' + inpFileName;
+var logFileName = 'log_' + dateTime + '_' + inpFileName;
+var errFileName = 'err_' + dateTime + '_' + inpFileName;
+var rtrFileName = 'retry_' + inpFileName;
 
 //Don't create outStream here. An empty outStream var flags the writing header to file below.
 var outStream = null;
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`);
 var errStream = fs.createWriteStream(`${dataDir}${subDir}${errFileName}`);
-var qryStream = fs.createWriteStream(`${dataDir}${subDir}${qryFileName}`);
+var rtrStream = fs.createWriteStream(`${dataDir}${subDir}${rtrFileName}`);
 
 var headRow = true;
 var rowCount = 0; //count records available
@@ -119,8 +119,10 @@ getColumns()
   .then(col => {
     getSpeciesFile(dataDir+subDir+inpFileName)
       .then(async src => {
-        log(`Input file rowCount:${src.rowCount} | Header:${src.header}`);
+        log(`Input file rowCount:${src.rowCount}`)
+        log(`Header Row: ${src.header}`);
         rowCount = src.rows.length;
+        if (rowCount) {log(`First Row: ${JSON.stringify(src.rows[0])}`);}
         for (var i=0; i<src.rows.length; i++) {
           await addCanonicalName(src.rows[i], logStream); //parse scientificName into canonicalName and add to src object
           await matchGbifSpecies(src.rows[i], i)
@@ -252,7 +254,7 @@ synonym, or something else.
 
 Fields returned from this endpoint are different from the raw /species output.
 
-We trasp errors in gbifAcceptedToVal where we compare incoming scientificName to
+We trap errors in gbifAcceptedToVal where we compare incoming scientificName to
 GBIF canonicalName.
 */
 function matchGbifSpecies(src, idx) {
@@ -269,7 +271,7 @@ function matchGbifSpecies(src, idx) {
     } else {
       Request.get(parms, (err, res, body) => {
         if (err) {
-          log(`matchGbifSpecies | err.code: ${err.code}`, errStream);
+          log(`matchGbifSpecies | err.code: ${err.code}`, logStream);
           err.src = src;
           err.idx = idx;
           reject(err);
@@ -317,7 +319,7 @@ function findGbifSpecies(src, idx) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err) {
-        log(`findGbifSpecies | err.code: ${err.code}`, errStream);
+        log(`findGbifSpecies | err.code: ${err.code}`, logStream);
         err.src = src;
         err.idx = idx;
         reject(err);
@@ -379,7 +381,7 @@ function getGbifSpecies(gbf, src, idx) {
   return new Promise((resolve, reject) => {
     Request.get(parms, (err, res, body) => {
       if (err) {
-        log(`getGbifSpecies|err.code: ${err.code}`, errStream);
+        log(`getGbifSpecies|err.code: ${err.code}`, logStream);
         err.gbf = gbf;
         err.src = src;
         err.idx = idx;
@@ -504,4 +506,7 @@ function logErr(obj, stream=null, override=true) {
 
 function displayStats() {
   log(`total:${rowCount}|inserted:${insCount}|updated:${updCount}|output:${outCount}|not-found:${notCount}|errors:${errCount}`, logStream, true);
+  log(`Log file name: ${dataDir+subDir+logFileName}`, logStream, true);
+  log(`Error file name: ${dataDir+subDir+errFileName}`, logStream, true);
+  log(`Retry file name: ${dataDir+subDir+rtrFileName}`, logStream, true);
 }

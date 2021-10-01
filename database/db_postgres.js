@@ -1,4 +1,4 @@
-const config = require('../config.json');
+const config = require('../db_config.json');
 const { Pool } = require('pg'); //a Postgres Connection Pool
 const connPool = new Pool(config.pg); //connect to a specific database with a specific user. defined in config.json.
 var types = require('pg').types

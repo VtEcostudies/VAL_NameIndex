@@ -33,7 +33,7 @@ var subDir = baseName + '/';
 var inpFileName = baseName + '.csv';
 //var inpFileName = 'new_' + baseName + '.txt'; //special name for new, not-found values.
 var outFileName = 'val_' + inpFileName;
-var logFileName = 'log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
+var logFileName = 'log_' + moment().format('YYYYMMDD-HHmmsss') + '_' + inpFileName;
 var errFileName = 'err_' + inpFileName;
 
 const inputFileDelim = ",";

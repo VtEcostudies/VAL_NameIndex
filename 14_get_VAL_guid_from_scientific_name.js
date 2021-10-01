@@ -58,7 +58,7 @@ if (inpFileDelim == ",") {
 }
 
 var outFileName = 'guid_' + inpFileName;
-var logFileName = 'guid_log_' + moment().format('YYYYMMDD-HHMMSSS') + '_' + inpFileName;
+var logFileName = 'guid_log_' + moment().format('YYYYMMDD-HHmmsss') + '_' + inpFileName;
 var errFileName = 'guid_err_' + inpFileName;
 
 //Don't create outStream here. Empty outStream flags writing header to file.

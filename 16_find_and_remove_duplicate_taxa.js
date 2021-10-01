@@ -42,7 +42,7 @@ log(`config paths: ${JSON.stringify(paths)}`);
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
 var baseName = '00_Fix_Duplicate_VAL_Taxa';
 var subDir = `${baseName}/`; //put output into a sub-dir so we can easily find it
-var logFileName = 'fix_duplicate_taxa_' + moment().format('YYYYMMDD-HHMMSSS') + '.txt';
+var logFileName = 'fix_duplicate_taxa_' + moment().format('YYYYMMDD-HHmmsss') + '.txt';
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`, {flags: 'w'});
 var errFileName = 'err_' + baseName + '.txt';
 var errStream = null;
