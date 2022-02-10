@@ -1,6 +1,4 @@
 /*
-  Author: Jason Loomis
-
   Project: VAL_Species
 
   File: 10_1_update_species_to_vernacular.js

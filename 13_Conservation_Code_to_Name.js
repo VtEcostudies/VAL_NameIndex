@@ -1,6 +1,4 @@
 /*
-  Author: Jason Loomis
-
   Project: VAL_Species
 
   File: 13_Conservation_Code_to_Name.js

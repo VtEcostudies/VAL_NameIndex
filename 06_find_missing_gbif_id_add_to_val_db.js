@@ -1,6 +1,4 @@
 /*
-  Author: Jason Loomis
-
   Project: VAL_Species
 
   File: 06_find_missing_gbif_id_add_to_val_db.js

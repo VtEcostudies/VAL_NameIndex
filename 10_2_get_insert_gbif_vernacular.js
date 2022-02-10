@@ -1,6 +1,4 @@
 /*
-  Author: Jason Loomis
-
   Project: VAL_Species
 
   File: 10_get_insert_gbif_vernacular.js
@@ -30,8 +28,8 @@ var debug = true; //flag console output for debugging
 var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
-var offset = 0;
-var limit = 100;
+var offset = 100;
+var limit = 50;
 var where = 'true';//`"createdAt"::date > now()::date - interval '30 day'`;
 
 const dataDir = paths.dataDir; //path to directory holding inp data files - INCLUDING TRAILING SLASH

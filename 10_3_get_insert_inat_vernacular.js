@@ -1,6 +1,4 @@
 /*
-  Author: Jason Loomis
-
   Project: VAL_Species
 
   File: 10_3_get_insert_inat_vernacular.js
@@ -19,6 +17,8 @@
 
   Now that we've scanned our entire list, in the future if we use iNat at all for updates,
   we should limit requests only to new taxa or those missing data.
+
+  As of September 2021, added getValMissing(), which still is a huge number of taxa.
 */
 
 //https://nodejs.org/api/readline.html
@@ -36,21 +36,24 @@ const process = require('child_process');
 const logsDir = "../logs_vernacular/";
 const logFileName = 'get_insert_inat_vernacular_names_' + moment().format('YYYYMMDD-HHmmsss') + '.txt';
 const errFileName = 'err_' + logFileName;
+const outFileName = 'inat_found_sciName_commonName.csv';
 const debug = true; //flag console output for debugging
 var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
-var offset = 112;
-var limit = 88; //25000;
-var delay = 2; //in seconds (on Windows)
+var offset = 0;
+var limit = //25000; OPEN A VPN CONNECTION, AND CHANGE THIS TO A BIG NUMBER!!!!
+var delay = 0; //in seconds (on Windows)
 var where = 'true';//`"createdAt"::date > now()::date - interval '7 day'`;
 
 logStream = fs.createWriteStream(`${logsDir}/${logFileName}`, {flags: 'w'});
-logStream = fs.createWriteStream(`${logsDir}/${errFileName}`, {flags: 'w'});
+errStream = fs.createWriteStream(`${logsDir}/${errFileName}`, {flags: 'w'});
+outStream = fs.createWriteStream(`${logsDir}/${outFileName}`, {flags: 'a'});
 
 log(`config paths: ${JSON.stringify(paths)}`, logStream);
 log(`log file: ${logsDir}${logFileName}`, logStream, true);
 log(`err file: ${logsDir}${errFileName}`, logStream, true);
+log(`out file: ${logsDir}${outFileName}`, logStream, true);
 
 getColumns()
   .then(res => {
@@ -144,6 +147,14 @@ function getInatVernacularNames(val) {
       } else {
         if (body) {
           log(`RESULT: getInatVernacularNames(${val.scientificName} | ${res.statusCode} | count: ${body.results?body.results.length:null}`, logStream, debug);
+          if (body.results) {
+            body.results.forEach((obj, idx) => {
+              if (obj.preferred_common_name) {
+                log(`FOUND matched_term: ${obj.matched_term} WITH name: ${obj.name} AND preferred_common_name: ${obj.preferred_common_name}`, logStream, true);
+                log(`${val.taxonId},${val.scientificName},|,${obj.matched_term},${obj.name},${obj.rank},${obj.preferred_common_name}`,outStream,true);
+              }
+            });
+          }
           //console.log(body);
           body.val = val;
           resolve(body);
@@ -163,23 +174,23 @@ To-do: split multiple vernacular names into separate inserts.
 
 NOTE: this is currently handled after the fact in the DB with function vernacular_split_names().
 */
-async function insertInatValVernacular(inat, val) {
-
-  try {
-    await log(`ATTEMPT: insertInatValVernacular | iNat taxonKey = ${inat.taxon_id} | scientificName = ${val.scientificName} | vernacularName = ${inat.preferred_common_name}`, logStream);
-
-    val.vernacularName = inat.preferred_common_name; //translate inat api values to val columns
-    val.source = "iNaturalist taxa API";
-    val.language = 'en';
-    val.preferred = 't'; //iNat only provides preferred common name
-
-    var queryColumns = await pgUtil.parseColumns(val, 1, [], staticColumns);
-    var text = `insert into val_vernacular (${queryColumns.named}) values (${queryColumns.numbered}) returning "taxonId"`;
-  } catch(err) {
-    log(`ERROR WITHIN insertInatValVernacular | ${err}`);
-  }
-
+function insertInatValVernacular(inat, val) {
   return new Promise((resolve, reject) => {
+    try {
+      log(`ATTEMPT: insertInatValVernacular | iNat taxonKey = ${inat.taxon_id} | scientificName = ${val.scientificName} | vernacularName = ${inat.preferred_common_name}`, logStream, true);
+
+      val.vernacularName = inat.preferred_common_name; //translate inat api values to val columns
+      val.source = "iNaturalist taxa API";
+      val.language = 'en';
+      val.preferred = 't'; //iNat only provides preferred common name
+
+      var queryColumns = pgUtil.parseColumns(val, 1, [], staticColumns);
+      var text = `insert into val_vernacular (${queryColumns.named}) values (${queryColumns.numbered}) returning "taxonId"`;
+    } catch(err) {
+      log(`ERROR WITHIN insertInatValVernacular | ${err}`);
+      reject({err:err, inat:inat, val:val})
+    }
+
     query(text, queryColumns.values)
       .then(res => {
         res.inat = inat;

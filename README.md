@@ -1,8 +1,6 @@
-  Author: Jason Loomis
-
   # Project: VAL_Species
 
-  Parse GBIF species occurrence download DwCA into a VAL species list DwCA that 
+  Parse GBIF species occurrence download DwCA into a VAL species list DwCA that
   can be used by the VAL ALA nameindexer. This processed output will also serve
   as the basis for the VAL Vermont Life List (or the VT Species Registry).
 
@@ -23,7 +21,7 @@
   4.  acceptedScientificName    4.	acceptedNameUsage
   5.  taxonRank                 5.	taxonRank
   6.  taxonomicStatus           6.	taxonomicStatus
-  8.  kingdomKey	            7.	parentNameUsageID
+  8.  kingdomKey	              7.	parentNameUsageID
   10. phylumKey                 8.	nomenclaturalCode
   12. classKey                  9.	scientificNameAuthorship
   14. orderKey                  10.	specificEpithet
@@ -203,7 +201,7 @@
   not sure what to do.
   4. We use the /match API's 'usageKey' as gbifId and taxonId. Missing from this API result is authorship. Not sure why.
   5. Keep track of taxonId values for higher-order taxa and output to file for processing later.
-  
+
   ### File: 09_load_taxon_ids_from_file.js
 
   Purpose: Fill-in higher-order taxon data in val_speces db.
@@ -215,4 +213,3 @@
   Prior to running this, truncate val_gbif_taxon_id.
 
   After running this, run 06 file to GET and INSERT missing data.
-

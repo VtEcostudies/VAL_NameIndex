@@ -7,8 +7,10 @@ integrate that name index into the VAL DE ALA/GBIF Server for indexing of occurr
 This process and system were purpose-built after trying to do without one. These are it's parts:
 
 - a postgres database serves as a local repository for species names
-- data inputs are species lists (checklists) hand-built by VAL scientists
-- a set of node.js processing scripts are used to ingest checklists into Postgres
+- data inputs are:
+  - (A) Species lists (checklists) hand-built by VAL scientists
+  - (B) GBIF SPECIES_LIST updates (nominally quarterly) which accompany GBIF Occurrence Updates
+- A set of node.js processing scripts are used to ingest checklists into Postgres
 - we export a complete species registry from postgres (also a DwCA-format file)
 - deliver the registry to the VAL server and build the nameindex from it
 
@@ -17,7 +19,7 @@ A series of steps no longer used - files 01 thru 05 - resulted from the learning
 incoming and outgoing data-dumps to the point where an export file from postgres could be consistently used
 as an input to the VAL DE ALA/GBIF nameindexer.
 
-For each new species dataset the following steps must be done:
+(A) For each new species dataset the following steps must be done:
 
 0) Edit 00_config.js (this file):
   - change exports.paths.baseName to the sub-directory and filename containing the input DwCA
@@ -33,39 +35,59 @@ For each new species dataset the following steps must be done:
   - We created this ad-hoc procedure to deal with taxa not found in GBIF, or for which VCE's scientists have
     expertise that clearly finds GBIF's taxonomy to be in error.
   - To do this, and since these taxa lack a GBIF taxonKey, we must create a custom taxonId in val_species
-  -
 
 3) node 06_find_missing_gbif_id_add_to_val_db.js
   - Queries our db and finds missing entries in the taxonomic tree
   - Uses GBIF API to fill in missing taxa
-  - Use repeatedly to complete the process.
+  - Use repeatedly to complete the process
+  - NOTE: 'duplicate key value' errors on first and subsequent passes are usually
+    the result of the initial query for errors getting multiple instances for the
+    same missing key.
 
-NEW: Each time we update Occurrences in VAL DE, we must update val_species using the SPECIES_LIST downlaoded
+(B) Each time we update Occurrences in VAL DE, we must update val_species using the SPECIES_LIST downlaoded
 with GBIF Occurrences. We created a new workflow for this:
 
-1) Download and extract GBIF SPECIES_LIST and put into the folder ../datasets/gbif_species_dwca/ with the
-same file name, gbif_species_dwca.txt (gbif always send them tab-delimited with a .csv extension!)
+1) Download and extract GBIF SPECIES_LIST(s) and put into main folder
+    ...\VAL_Data_Pipelines\VAL_NameIndex\gbif_species_update
+  with a subfolder named like:
+    'gbif_species_2022_01_19'
+  and name the species-update files like eg:
+    'gbif_species_update_w_loc.tsv'
+    'gbif_species_update_wo_loc.tsv'
 
-2) Change baseName, below, to gbif_species_dwca. If you wish to use separate fileNames, over time
-set fileName, below, to the name of your new GBIF SPECIES_LIST download.
+2) BACKUP THE val_species table before you do step (4) below
 
-3) BACKUP THE val_species table before you do step (4) below
+3) Open 08_ingest_gbif_species_update.js and ALTER these values to reflect the above:
 
-4) node 08_ingest_species_list_val_db_create_dwca.js
-  - set the INSERT flag, unset the UPDATE flag:
-      var dbInsert = 1; //insert all taxa into val_species db
-      var dbUpdate = 0; //update all taxa in val_species db
-  - use this with a GBIF species DwCA just as we would our own source species lists
-  - logging to screen and file shows how many new INSERTS
+    const subDir = 'gbif_species_2022_01_19/';
+    var fileName = 'gbif_species_update_wo_loc';
+    var fileExt = '.tsv'; (default is 'csv' for a tab-delimted file from GBIF which bends the mind)
 
+4) RUN: node 08_ingest_gbif_species_update.js
+  - logging to screen and file shows how many MISSING, ERRORS, INSERTS
+
+5) node 06_find_missing_gbif_id_add_to_val_db.js
+  - Queries our db and finds missing entries in the taxonomic tree
+  - Uses GBIF API to fill in missing taxa
+  - Use repeatedly to complete the process
+  - NOTE: 'duplicate key value' errors on first and subsequent passes are usually
+    the result of the initial query for errors getting multiple instances for the
+    same missing key.
+
+6) LOAD vernacular names:
+  - Open a VPN Connection to keep iNat from blacklisting you, then:
+  - node 10_3_get_insert_inat_vernacular.js
+
+7) Export a new set of DwCA source files for the VAL DE nameindexer:
+  -
 */
 exports.paths = {
   dwcaDir: "../",
   dataDir: "../datasets/",
+  gbifDir: "../gbif_species_update/",
   //----------------------fileNames
   //fileName: "Moths_Vermont_V5",
   //----------------------baseNames
-  baseName: 'gbif_species_dwca'
   //baseName = 'Add_Hoc_Taxa';
   //fileName = 'species_Propylea_quatuordecimpunctata';
   //fileName = 'Moths_Errata';

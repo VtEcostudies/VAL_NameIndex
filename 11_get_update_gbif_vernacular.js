@@ -1,8 +1,4 @@
 /*
-  Author: Jason Loomis
-
-  Project: VAL_Species
-
   File: 11_get_update_gbif_vernacular.js
 
   Purpose: Retrieve vernacular names missing language and source from GBIF and

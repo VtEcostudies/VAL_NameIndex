@@ -1,6 +1,4 @@
 /*
-Author: Jason Loomis
-
 Project: VAL_Species
 
 File: 15_create_val_subgroups_json.js

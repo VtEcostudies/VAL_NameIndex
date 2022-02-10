@@ -1,6 +1,4 @@
 /*
-  Author: Jason Loomis
-
   Project: VAL_Species
 
   File: 08_ingest_species_list_val_db_create_dwca.js
@@ -73,7 +71,7 @@ const subDir = baseName + '/';
 var fileName = paths.fileName;
 if (!fileName) {fileName = baseName;}
 
-var retry = 1;
+var retry = 0;
 if (retry) {fileName = 'retry_' + fileName;}
 
 var dbInsert = 1; //insert all taxa into val_species db
@@ -86,7 +84,7 @@ const outFileDelim = inpFileDelim; //",";
 if (inpFileDelim == ",") {
   inpFileName = fileName + '.csv';
 } else if (inpFileDelim == '\t') {
-  inpFileName = fileName + '.txt';
+  inpFileName = fileName + '.tsv';
 }
 
 //inpFileName = 'fix_' + inpFileName; //use this to handle small update files in the same directory
