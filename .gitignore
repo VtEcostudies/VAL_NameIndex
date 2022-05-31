@@ -9,6 +9,7 @@ package-lock.json
 /database/pg_dump/*.backup
 /node_modules
 /database/export
+/logs
 
 #include
 !/database/pg_dump/*.zip

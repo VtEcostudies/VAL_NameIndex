@@ -115,8 +115,8 @@ getColumns()
                     log(`${err.fix.missingId} | ${err.message}`, errStream, true);
                   });
               //we got a gbif result, and gbif.key is good
-              //} else if (!res.gbif.nubKey || res.gbif.key == res.gbif.nubKey) {
-              } else if (res.gbif.key == res.gbif.nubKey) {
+              } else if (!res.gbif.nubKey || res.gbif.key == res.gbif.nubKey) {
+              //} else if (res.gbif.key == res.gbif.nubKey) {
                 await insertValMissing(res.gbif)
                   .then(res => {
                     insCount++;
@@ -186,6 +186,8 @@ async function getValMissing() {
   right join val_species va
   on vs."taxonId" = va."acceptedNameUsageId"
   where vs."taxonId" is null and va."acceptedNameUsageId" != '' and va."acceptedNameUsageId" != '0'
+  `;
+/*
   union
   --retrieve a list of parentNameUsageId which lack a primary definition (no taxonId)
   select va."taxonId" as "sourceId", cast(va."parentNameUsageId" as text) as "missingId", va."taxonRank", 'parentNameUsage' as column
@@ -243,7 +245,7 @@ async function getValMissing() {
   on a."taxonId" = b."speciesId"
   where a."taxonId" is null and b."speciesId" is not null and b."speciesId" != '0'
   `;
-
+*/
   return await query(text);
 }
 
@@ -255,10 +257,6 @@ async function getValMissing() {
   Return
   - results or error
   - incoming fix object from getValMissing for downstream processing
-  In Other Words, if there's a problem getting missingId, which we try to get on
-  the first pass, we back up and try to reload the sourceId - which is the taxon
-  in our DB that's pointing to missingId. The assumption, on such an error, is
-  that sourceId itself is incorrect, and we need to update it (or DELETE it.)
 */
 async function getGbifSpecies(fix, key) {
   var parms = {
