@@ -1,6 +1,13 @@
 /*
-Read header row for column names to create a new table.
-If table create succeeds, load the data.
+  Project: VAL_Species
+
+  File: 17_text_to_table.js
+
+  Creat a species index from dowloaded occurrences.
+
+  Read header row for column names to create a new table.
+
+  If table create succeeds, load the data.
 */
 
 const fs = require('fs');

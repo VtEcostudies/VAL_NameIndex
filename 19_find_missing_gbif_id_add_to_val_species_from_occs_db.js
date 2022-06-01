@@ -1,7 +1,7 @@
 /*
   Project: VAL_Species
 
-  File: 06_find_missing_gbif_id_add_to_val_db.js
+  File: 19_find_missing_gbif_id_add_to_val_species_from_occs_db.js
 
   Purpose: Fix broken taxonomy tree in ${table_name} table.
 
@@ -12,6 +12,8 @@
 
   The query finds missing primary taxonKeys for:
 
+  acceptedTaxonKey
+  parentKey
   kingdomKey
   phylumKey
   classKey
@@ -19,8 +21,6 @@
   familyKey
   genusKey
   speciesKey
-  acceptedNameUsageKey
-  parentNameUsageKey
 
   Query the GBIF species API for complete record data for each missing taxonKey.
 */
@@ -37,7 +37,7 @@ const log = require('./97_utilities').log;
 var staticColumns = [];
 
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
-var baseName = '00_Add_Missing_VAL_Taxa';
+var baseName = '00_Missing_Gbif_Species_From_Occs';
 var subDir = `${baseName}/`; //put output into a sub-dir so we can easily find it
 var logFileName = 'insert_missing_taxa_' + moment().format('YYYYMMDD-HHmmsss') + '.txt';
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`, {flags: 'w'});
@@ -71,7 +71,6 @@ getColumns()
         rowCount = res.rows.length;
         log(`${res.rowCount} missing gbif Keys.`, logStream, true);
         for (var i=0; i<res.rowCount; i++) {
-        //for (var i=0; i<20; i++) {
           log(`--------------------------------------------------------------------------------`, logStream, true);
           log(`row ${i+1}: ${JSON.stringify(res.rows[i])}`, logStream, true);
           await getGbifSpecies(res.rows[i], res.rows[i].missingKey) //3 columns returned from getValMissing: missingKey, sourceKey, column
@@ -81,45 +80,45 @@ getColumns()
                 log(JSON.stringify(res), errStream, true);
               } else if (res.gbif.key == res.gbif.nubKey) {
                 console.log('GBIF RESULT FOUND AND KEY == NUBKEY');
-                await insertValMissing(res.gbif)
+                await insertSpeciesFromOccMissing(res.gbif)
                   .then(res => {
                     nubCount++;
-                    log(`insertValMissing SUCCESS | taxonKey:${res.gbif.taxonKey}`, logStream);
+                    log(`insertSpeciesFromOccMissing SUCCESS | taxonKey:${res.gbif.taxonKey}`, logStream);
                     log(JSON.stringify(res.gbif), insStream);
                   })
                   .catch(err => {
                     errCount++;
-                    log(`insertValMissing ERROR ${errCount} | gbifKey:${err.gbif.key} | error:${err.message}`, logStream, true);
+                    log(`insertSpeciesFromOccMissing ERROR ${errCount} | gbifKey:${err.gbif.key} | error:${err.message}`, logStream, true);
                     log(JSON.stringify(err), errStream, true);
                   });
               }
               else if (res.gbif.nubkey) { //we got a gbif result with a nubkey, but gbif.key != gbif.nubkey
                 console.log('GBIF RESULT FOUND AND KEY != NUBKEY');
                 //log(JSON.stringify(res), errStream, true);
-                await insertValMissing(res.gbif)
+                await insertSpeciesFromOccMissing(res.gbif)
                   .then(res => {
                     notCount++;
-                    log(`insertValMissing SUCCESS | taxonKey:${res.gbif.taxonKey}`, logStream);
+                    log(`insertSpeciesFromOccMissing SUCCESS | taxonKey:${res.gbif.taxonKey}`, logStream);
                     log(JSON.stringify(res.gbif), insStream);
                   })
                   .catch(err => {
                     errCount++;
-                    log(`insertValMissing ERROR ${errCount} | gbifKey:${err.gbif.key} | error:${err.message}`, logStream, true);
+                    log(`insertSpeciesFromOccMissing ERROR ${errCount} | gbifKey:${err.gbif.key} | error:${err.message}`, logStream, true);
                     log(JSON.stringify(err), errStream, true);
                   });
               }
               else {  //we got a gbif result, but there is no gbif.nubkey
                 console.log('GBIF RESULT FOUND BUT NO NUBKEY');
                 //log(JSON.stringify(res), errStream, true);
-                await insertValMissing(res.gbif)
+                await insertSpeciesFromOccMissing(res.gbif)
                   .then(res2 => {
                     nonCount++;
-                    log(`insertValMissing SUCCESS | taxonKey:${res2.gbif.taxonKey}`, logStream);
+                    log(`insertSpeciesFromOccMissing SUCCESS | taxonKey:${res2.gbif.taxonKey}`, logStream);
                     log(JSON.stringify(res2.gbif), insStream);
                   })
                   .catch(err2 => {
                     errCount++;
-                    log(`insertValMissing ERROR ${errCount} | gbifKey:${err2.gbif.key} | error:${err2.message}`, logStream, true);
+                    log(`insertSpeciesFromOccMissing ERROR ${errCount} | gbifKey:${err2.gbif.key} | error:${err2.message}`, logStream, true);
                     log(JSON.stringify(err2), errStream, true);
                   });
               }
@@ -127,7 +126,7 @@ getColumns()
             .catch(err => {
               errCount++;
               log(`getGbifSpecies (for missingKey) ERROR ${errCount} | gbifKey:${err.fix.missingKey} | ${err.message}`, logStream, true);
-              log(JSON.stringify(res), errStream, true);
+              log(JSON.stringify(err), errStream, true);
             });
         }
       })
@@ -145,7 +144,7 @@ function getColumns() {
 }
 
 /*
-NOTE: taxonKey and acceptedNameUsageKey are type integer.
+  NOTE: taxonKeys are type BIGINT for species-from-occurrences tables.
 */
 async function getValMissing() {
   var text = '';
@@ -255,35 +254,22 @@ async function getGbifSpecies(fix, key) {
     Request.get(parms, (err, res, body) => {
       if (err) {
         reject({"gbif":null, "fix":fix, "err":err});
-        //err.fix = fix;
-        //reject(err);
       } else {
         if (body && body.key) {
           log(`getGbifSpecies(${key}) | ${res.statusCode} | gbif_key: ${body.key} | gbif_nubKey: ${body.nubKey}`, logStream, true);
           resolve({"gbif":body, "fix":fix});
         } else {
-            var err = {message:`${key} NOT Found. | missingKey: http://api.gbif.org/v1/species/${fix.missingKey} | sourceKey: http://api.gbif.org/v1/species/${fix.sourceKey}`};
-          errCount++;
+          var err = {message:`${key} NOT Found. | missingKey: http://api.gbif.org/v1/species/${fix.missingKey} | sourceKey: http://api.gbif.org/v1/species/${fix.sourceKey}`};
           log(`getGbifSpecies ERROR ${errCount} | ${err.message}`, logStream, true);
           log(`${key} | ${err.message}`, errStream, true);
           resolve({"gbif":null, "fix":fix, "err":err});
-          //err.fix = fix; //return our incoming getValMissing object
-          //reject(err);
         }
       }
     });
   });
 }
 
-async function insertValMissing(gbif) {
-  log(`insertValMissing | taxonKey = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`, logStream, true);
-
-  //translate gbif api values to val columns
-  //no, don't do that for this setup. columns are named from GBIF field names here.
-  var val = {};
-  //val = gbifToValDirect(gbif);
-  //however, our column names here derive from the GBIF occurrence download, which uses some
-  //different names than their own species API columns names...
+function gbifToDbColums(gbif) {
   if (gbif.rank) gbif.taxonRank = gbif.rank;
   gbif.taxonRank =   gbif.taxonRank.toUpperCase();
   gbif.taxonKey = gbif.key;
@@ -293,8 +279,18 @@ async function insertValMissing(gbif) {
     gbif.acceptedScientificName = gbif.scientificName;
     gbif.acceptedTaxonKey = gbif.taxonKey;
   }
+  return gbif;
+}
 
-  //console.log('insertValMissing |', gbif);
+async function insertSpeciesFromOccMissing(gbif) {
+  log(`insertSpeciesFromOccMissing | taxonKey = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`, logStream, true);
+
+  //translate gbif api values to gbif db colums
+  //our column names here derive from the GBIF occurrence download, which has some
+  //different names than their own species API columns names...
+  gbif = gbifToDbColums(gbif);
+
+  //console.log('insertSpeciesFromOccMissing |', gbif);
 
   var queryColumns = pgUtil.parseColumns(gbif, 1, [], staticColumns);
   const text = `insert into ${table_name} (${queryColumns.named}) values (${queryColumns.numbered}) returning "taxonKey"`;
@@ -302,74 +298,10 @@ async function insertValMissing(gbif) {
     query(text, queryColumns.values)
       .then(res => {
         res.gbif = gbif;
-        //res.val = val;
         resolve(res);
       })
       .catch(err => {
         err.gbif = gbif;
-        //err.val = val;
-        reject(err);
-      })
-  })
-}
-
-/*
-  Here, we've determined that the sourceKey had a bad value for missingKey. Using a good value, update our sourceKey
-  record.
-*/
-function updateValSource(gbif, fix) {
-  log(`updateValSource | taxonKey = ${gbif.key} | scientificName = ${gbif.scientificName} | canonicalName = ${gbif.canonicalName}`, logStream, true);
-
-  //translate gbif api values to val columns - but we only use two of them for this missingKey update
-  var val = gbifToValDirect(gbif);
-
-  var queryColumns = pgUtil.parseColumns(val, 2, [val.gbifKey], staticColumns);
-
-  if ('parentNameUsage' == fix.column) {
-    var sql = `update ${table_name} set ("taxonKey","parentNameUsageKey") = ($2,$3) where "gbifKey"=$1`;
-    var arg = [fix.sourceKey,fix.sourceKey,val.parentNameUsageKey];
-  } else {
-    var sql = `update ${table_name} set ("${fix.column}","${fix.column}Key") = ($2,$3) where "gbifKey"=$1`;
-    var arg = [fix.sourceKey,val[fix.column],val[`${fix.column}Key`]];
-  }
-
-  log(`updateValSource Query | ${sql} | ${arg}`, logStream, true);
-
-  return new Promise((resolve, reject) => {
-    query(sql,arg)
-      .then(res => {
-        res.gbif = gbif;
-        res.val = val;
-        res.fix = fix;
-        resolve(res);
-      })
-      .catch(err => {
-        err.gbif = gbif;
-        err.val = val;
-        err.misssing = fix;
-        reject(err);
-      })
-  })
-}
-
-/*
-  ...can't delete from ${table_name} if val_vernacular has pointer. need to alter foreign key relation
-  to 'ON DELETE CASCADE'.
-*/
-function deleteValSource(taxonKey) {
-  var sql = `delete from ${table_name} where "taxonKey"=$1;`;
-  var arg = [taxonKey];
-
-  log(`deleteValSource Query | ${sql} | ${arg}`, logStream, true);
-
-  return new Promise((resolve, reject) => {
-    query(sql,arg)
-      .then(res => {
-        res.taxonKey = taxonKey;
-        resolve(res);
-      })
-      .catch(err => {
-        err.taxonKey = taxonKey;
         reject(err);
       })
   })
