@@ -1,7 +1,7 @@
 <archive xmlns="http://rs.tdwg.org/dwc/text/" metadata="eml.xml">
   <core encoding="utf-8" fieldsTerminatedBy="," linesTerminatedBy="\n" fieldsEnclosedBy='"' ignoreHeaderLines="1" rowType="http://rs.tdwg.org/dwc/terms/Taxon">
     <files>
-      <location>val_species.csv</location>
+      <location>val_species_from_occs.csv</location>
     </files>
 		<id index="0"/>
 		<field index="1" term="http://rs.tdwg.org/dwc/terms/taxonID"/>
@@ -17,20 +17,13 @@
 		<field index="11" term="http://rs.tdwg.org/dwc/terms/infraspecificEpithet"/>
 		<field index="12" term="http://rs.tdwg.org/dwc/terms/taxonRemarks"/>
 		<field index="13" term="http://rs.tdwg.org/dwc/terms/vernacularName"/>
-		<field index="14" term="http://rs.tdwg.org/dwc/terms/datasetName"/>
-		<field index="15" term="http://rs.tdwg.org/dwc/terms/datasetID"/>
-		<field index="16" term="http://rs.tdwg.org/dwc/terms/kingdom"/>
-		<field index="17" term="http://rs.tdwg.org/dwc/terms/phylum"/>
-		<field index="18" term="http://rs.tdwg.org/dwc/terms/class"/>
-		<field index="19" term="http://rs.tdwg.org/dwc/terms/order"/>
-		<field index="20" term="http://rs.tdwg.org/dwc/terms/family"/>
-		<field index="21" term="http://rs.tdwg.org/dwc/terms/genus"/>
-		<field index="22" term="http://rs.tdwg.org/dwc/terms/species"/>
-		<field index="23" term="http://rs.tdwg.org/dwc/terms/bibliographicCitation"/>
-		<field index="24" term="http://rs.tdwg.org/dwc/terms/references"/>
-		<field index="25" term="http://rs.tdwg.org/dwc/terms/establishmentMeans"/>
-		<field index="26" term="http://rs.tdwg.org/dwc/terms/institutionCode"/>
-		<field index="27" term="http://rs.tdwg.org/dwc/terms/collectionCode"/>
+		<field index="14" term="http://rs.tdwg.org/dwc/terms/kingdom"/>
+		<field index="15" term="http://rs.tdwg.org/dwc/terms/phylum"/>
+		<field index="16" term="http://rs.tdwg.org/dwc/terms/class"/>
+		<field index="17" term="http://rs.tdwg.org/dwc/terms/order"/>
+		<field index="18" term="http://rs.tdwg.org/dwc/terms/family"/>
+		<field index="19" term="http://rs.tdwg.org/dwc/terms/genus"/>
+		<field index="20" term="http://rs.tdwg.org/dwc/terms/species"/>
   </core>
   <extension encoding="utf-8" fieldsTerminatedBy="," linesTerminatedBy="\n" fieldsEnclosedBy='"' ignoreHeaderLines="1" rowType="http://rs.gbif.org/terms/1.0/VernacularName">
 	<files>
