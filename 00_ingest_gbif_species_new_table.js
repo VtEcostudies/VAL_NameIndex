@@ -5,6 +5,10 @@
 
   Purpose: Create a new VAL Vermont Species Checklist from scratch
 
+  Datasets:
+  https://www.gbif.org/occurrence/search?country=US&has_coordinate=false&state_province=Vermont%20(State)&state_province=Vermont&advanced=1
+
+
   Details:
     - bounce incoming taxonKey against speciesTable first
     - if key is found in speciesTable, ignore
@@ -39,7 +43,8 @@ console.log(`config paths: ${JSON.stringify(paths)}`);
 
 const dataDir = paths.gbifDir; //path to directory holding source data files - INCLUDING TRAILING SLASH
 const subDir = 'gbif_species_2022_11_01/';
-var fileName = 'vt_gadm_gbif_species_list';
+//var fileName = 'species_gbif_vt_gadm';
+var fileName = 'species_gbif_vt_state_province_no_coordinates';
 var fileExt = '.tsv';
 var inpFileName = fileName + fileExt;
 
@@ -246,7 +251,7 @@ return new Promise(async (resolve, reject) => {
       These anomalies are easy to find in the db. As of 2022-01-27, there were 619 of these:
       select count(*) from val_species where LOWER("taxonomicStatus") like '%doubt%';
       Also: GBIF does not provide accepted when key == nubKey, for obvious reasons, bolstering
-      our decisionto make these self-referential (circular) when they're missing.
+      our decision to make these self-referential (circular) when they're missing.
    */
     if (!gbif.acceptedKey || !gbif.accepted) {
       log(`insertValTaxon | MISSING 'acceptedKey' OR 'accepted' (REQUIRED) | taxononmicStatus: ${gbif.taxonomicStatus} | name: ${gbif.canonicalName} | key: ${gbif.key}`, logStream, true);

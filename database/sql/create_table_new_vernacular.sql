@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.new_vernacular
     "language" VARCHAR,
     "countryCode" VARCHAR,
     "source" VARCHAR,
+    "preferred" BOOLEAN,
     "createdAt" timestamp without time zone DEFAULT now(),
     "updatedAt" timestamp without time zone DEFAULT now(),
     CONSTRAINT fk_taxon_id FOREIGN KEY ("taxonId") REFERENCES new_species ("taxonId")
@@ -34,6 +35,3 @@ inner join new_species ns on ns."taxonId"=ov."taxonId"
 
 ALTER TABLE new_vernacular ADD CONSTRAINT fk_taxon_id FOREIGN KEY ("taxonId") REFERENCES new_species ("taxonId");
 CREATE UNIQUE INDEX taxonid_vernacularname_unique_idx on new_vernacular ("taxonId", LOWER("vernacularName"));
-
-SELECT count(*) from val_vernacular; --33594
-SELECT count(*) FROM new_vernacular; --24226

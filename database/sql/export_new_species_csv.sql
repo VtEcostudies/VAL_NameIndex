@@ -1,0 +1,32 @@
+--NOTE: pg just needs permissions to write to the specified folder. chmod 777 \dir\subdir.
+copy (select
+	"taxonId",
+	"taxonId",
+	"scientificName",
+	"scientificNameAuthorship",
+	"taxonRank",
+	"taxonomicStatus",
+	"acceptedNameUsageId",
+	"acceptedNameUsage",
+	"parentNameUsageId",
+	"nomenclaturalCode",
+	"specificEpithet",
+	"infraspecificEpithet",
+	"taxonRemarks",
+	"vernacularName",
+	"datasetName",
+	"datasetId",
+	"kingdom",
+	"phylum",
+	"class",
+	"order",
+	"family",
+	"genus",
+	"species",
+    "bibliographicCitation",
+    "references",
+    "establishmentMeans",
+    "institutionCode",
+    "collectionCode"
+	from new_species)
+to 'C:\Users\jtloo\Documents\VCE\VAL_Data_Pipelines\VAL_NameIndex\repo\database\export\new_species.csv' delimiter ',' csv header;
