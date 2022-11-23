@@ -101,7 +101,7 @@ connect(dbConfig.pg) //this produces an error message on failure
                                 console.log('ERROR inserted into', errorTable);
                               })
                               .catch(err => {
-                                console.log('ERROR inserting ERROR into', errorTable, err);
+                                console.log('ERROR inserting ERROR into table', errorTable, err.message);
                               })
                             log(`${err.idx} | insertValTaxon ERROR | key:${err.gbif.key} | nubKey:${err.gbif.nubKey} | error:${err.message}`, logStream, true);
                             //console.log(`${err.idx} | insertValTaxon ERROR | GBIF taxon input:`, err.gbif);
