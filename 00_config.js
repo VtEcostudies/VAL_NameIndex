@@ -78,8 +78,26 @@ with GBIF Occurrences. We created a new workflow for this:
   - Open a VPN Connection to keep iNat from blacklisting you, then:
   - node 10_3_get_insert_inat_vernacular.js
 
-7) Export a new set of DwCA source files for the VAL DE nameindexer:
+7) Export a new set of DwCA source files for the VAL DE nameindexer, run the sql
+    script for your needs, one of:
+  - C:\Users\jtloo\Documents\VCE\VAL_Data_Pipelines\VAL_NameIndex\repo\database\sql\export_all_csv.sql
+  - C:\Users\jtloo\Documents\VCE\VAL_Data_Pipelines\VAL_NameIndex\repo\database\sql\export_all_species_from_occs_csv.sql
+
+8) Move files to VAL DE server using this file:
+  - C:\Users\jtloo\Documents\VCE\VAL_Data_Pipelines\VAL_NameIndex\repo\database\export\scp_to_val-core_server.bat
+  Which runs a command like this:
+  - scp -i "C:/Users/jtloo/.ssh/vce_live_aws_key_pair.pem" ./name-indexer/*.* ubuntu@vtatlasoflife.org:~/nameindex/val-dwca
+
+9) Log on to VAL DE core server using a file like this:
   -
+
+10) On ALA Core Server, move source and build new name indexer:
+  $ cp ~/nameindex/val-dwca/* to /data/lucene/sources/val-dwca
+  $ cd /data/lucene/sources
+  $ ./val_before_nameindexer.sh
+  $ ./val_nameindexer.sh
+
+  You should see output indicating successful indexing of taxa and common names. If so, proceed to index occurrences.
 */
 exports.paths = {
   dwcaDir: "../",
