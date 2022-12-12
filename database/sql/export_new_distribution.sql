@@ -4,9 +4,9 @@
 copy (select
 --"taxonId",
 "taxonId" AS "gbifID",
-'' AS "establishmentMeans",
+null AS "establishmentMeans",
 'ISO3166-2:US-VT' AS "locationID",
 'Vermont-US' AS "locality",
 'US' AS "CountryCode"
 from new_species)
-to 'C:\Users\jtloo\Documents\VCE\VAL_Data_Pipelines\VAL_NameIndex\repo\database\export\new_distribution.csv' delimiter ',' csv header;
+to 'C:\Users\jtloo\Documents\VCE\VAL_Data_Pipelines\VAL_NameIndex\repo\database\export\ipt\new_distribution.csv' delimiter ',' csv header;

@@ -10,7 +10,7 @@ CREATE TABLE new_species
 "scientificNameAuthorship" VARCHAR,
 "acceptedNameUsageId" VARCHAR NOT NULL,
 "acceptedNameUsage" VARCHAR NOT NULL,
-"parentNameUsageId" VARCHAR NOT NULL,
+"parentNameUsageId" VARCHAR,
 "parentNameUsage" VARCHAR,
 "taxonRank" VARCHAR NOT NULL,
 "taxonomicStatus" VARCHAR,
@@ -56,6 +56,7 @@ BEGIN
    RETURN NEW;
 END;
 $BODY$;
+
 --create triggers for each table having the column "updatedAt"
 CREATE TRIGGER trigger_updated_at
     BEFORE UPDATE

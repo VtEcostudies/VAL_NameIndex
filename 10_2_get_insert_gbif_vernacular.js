@@ -55,15 +55,15 @@ getColumns()
             .then(async res => {
               for (var j=0; j<res.results.length; j++) { //gbif api syntax - 'results' not 'rows'...
                 if (res.results[j].language == 'eng') { //} && res.results[j].preferred) {
-                  await insertValVernacular(res.results[j], res.val)
+                  await insertGbifVernacular(res.results[j], res.val)
                     .then(res => {
                       insCount++;
-                      const msg = `SUCCESS: insertValVernacular | ${res.val.taxonId} | ${res.val.scientificName} | ${res.val.vernacularName}`;
+                      const msg = `SUCCESS: insertGbifVernacular | ${res.val.taxonId} | ${res.val.scientificName} | ${res.val.vernacularName}`;
                       log(msg, logStream, true); //just echo successes
                     })
-                    .catch(err => { //error on insertValVernacular
+                    .catch(err => { //error on insertGbifVernacular
                       errCount++;
-                      const msg = `ERROR: insertValVernacular | ${err.val?err.val.taxonId:undefined} | ${err.val?err.val.scientificName:undefined} | ${err.val?err.val.vernacularName:undefined} | error:${err.message}`;
+                      const msg = `ERROR: insertGbifVernacular | ${err.val?err.val.taxonId:undefined} | ${err.val?err.val.scientificName:undefined} | ${err.val?err.val.vernacularName:undefined} | error:${err.message}`;
                       log(msg, logStream, debug);
                       log(`${err.val.taxonId}|${err.val.scientificName}\n`, errStream);
                     })
@@ -151,10 +151,10 @@ To-do: split multiple vernacular names into separate inserts.
 
 NOTE: this is currently handled after the fact in the DB with function vernacular_split_names().
 */
-async function insertValVernacular(gbif, val) {
+async function insertGbifVernacular(gbif, val) {
 
   try {
-    await log(`ATTEMPT: insertValVernacular | GBIF taxonKey = ${gbif.taxonKey} | scientificName = ${val.scientificName} | vernacularName = ${gbif.vernacularName}`, logStream);
+    await log(`ATTEMPT: insertGbifVernacular | GBIF taxonKey = ${gbif.taxonKey} | scientificName = ${val.scientificName} | vernacularName = ${gbif.vernacularName}`, logStream);
 
     val.vernacularName = gbif.vernacularName; //translate gbif api values to val columns
     val.source = gbif.source;
@@ -164,7 +164,7 @@ async function insertValVernacular(gbif, val) {
     var queryColumns = await pgUtil.parseColumns(val, 1, [], staticColumns);
     var text = `insert into val_vernacular (${queryColumns.named}) values (${queryColumns.numbered}) returning "taxonId"`;
   } catch(err) {
-    log(`ERROR WITHIN insertValVernacular | ${err}`);
+    log(`ERROR WITHIN insertGbifVernacular | ${err}`);
   }
 
   return new Promise((resolve, reject) => {

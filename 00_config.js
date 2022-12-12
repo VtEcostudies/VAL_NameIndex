@@ -99,6 +99,19 @@ with GBIF Occurrences. We created a new workflow for this:
 
   You should see output indicating successful indexing of taxa and common names. If so, proceed to index occurrences.
 */
+exports.tables = {
+  source: {
+    speciesTable: 'new_species',
+    vernacularTable: 'new_vernacular',
+    errorTable: 'species_err'
+  },
+  output: {
+    speciesTable: 'mval_species',
+    vernacularTable: 'mval_vernacular',
+    errorTable: 'species_err'
+  }
+};
+
 exports.paths = {
   dwcaDir: "../",
   dataDir: "../datasets/",

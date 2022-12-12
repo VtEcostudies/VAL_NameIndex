@@ -1,37 +1,55 @@
---DROP TABLE IF EXISTS public.new_vernacular;
+drop table IF EXISTS noo_vernacular;
 
-CREATE TABLE IF NOT EXISTS public.new_vernacular
-(
-    "vernacularId" SERIAL UNIQUE PRIMARY KEY,
-    "taxonId" VARCHAR NOT NULL,
-    "scientificName" VARCHAR NOT NULL,
-    "vernacularName" VARCHAR NOT NULL,
-    "lifeStage" VARCHAR,
-    "sex" VARCHAR,
-    "language" VARCHAR,
-    "countryCode" VARCHAR,
-    "source" VARCHAR,
-    "preferred" BOOLEAN,
-    "createdAt" timestamp without time zone DEFAULT now(),
-    "updatedAt" timestamp without time zone DEFAULT now(),
-    CONSTRAINT fk_taxon_id FOREIGN KEY ("taxonId") REFERENCES new_species ("taxonId")
-);
+select *
+	into noo_vernacular
+	from new_vernacular
+limit 0;
 
-CREATE UNIQUE INDEX taxonid_vernacularname_unique_idx on new_vernacular ("taxonId", LOWER("vernacularName"));
+ALTER TABLE noo_vernacular ALTER column "updatedAt" SET default now();
+ALTER TABLE noo_vernacular ALTER column "createdAt" SET default now();
+ALTER TABLE noo_vernacular ADD CONSTRAINT unique_taxonid_vernacularname_noo UNIQUE("taxonId", "vernacularName");
+ALTER TABLE noo_vernacular ADD CONSTRAINT fk_taxon_id FOREIGN KEY ("taxonId") REFERENCES new_species ("taxonId");
 
--- DROP TRIGGER IF EXISTS trigger_updated_at ON public.new_vernacular;
+DROP FUNCTION IF EXISTS vernacular_case();
+CREATE OR REPLACE FUNCTION vernacular_case()
+    RETURNS trigger
+    LANGUAGE 'plpgsql'
+AS $BODY$
+BEGIN
+   NEW."vernacularName" = INITCAP(NEW."vernacularName");
+   RETURN NEW;
+END;
+$BODY$;
 
-CREATE TRIGGER trigger_updated_at
-    BEFORE UPDATE 
-    ON public.new_vernacular
+DROP TRIGGER IF EXISTS trigger_insert_vernacular_name ON noo_vernacular;
+CREATE TRIGGER trigger_insert_vernacular_name
+    BEFORE INSERT 
+    ON noo_vernacular
     FOR EACH ROW
-    EXECUTE FUNCTION public.set_updated_at();
+    EXECUTE FUNCTION vernacular_case();
 
-drop table if exists new_vernacular;
-select ov.*
-into new_vernacular
-from val_vernacular ov 
-inner join new_species ns on ns."taxonId"=ov."taxonId"
+DROP TRIGGER IF EXISTS trigger_update_vernacular_name ON noo_vernacular;
+CREATE TRIGGER trigger_update_vernacular_name
+    BEFORE UPDATE
+    ON noo_vernacular
+    FOR EACH ROW
+    EXECUTE FUNCTION vernacular_case();
 
-ALTER TABLE new_vernacular ADD CONSTRAINT fk_taxon_id FOREIGN KEY ("taxonId") REFERENCES new_species ("taxonId");
-CREATE UNIQUE INDEX taxonid_vernacularname_unique_idx on new_vernacular ("taxonId", LOWER("vernacularName"));
+insert into noo_vernacular
+	select *
+	from new_vernacular
+ON CONFLICT ON CONSTRAINT unique_taxonid_vernacularname_noo DO NOTHING;
+
+insert into noo_vernacular
+	select ov.*
+	from val_vernacular ov 
+	inner join new_species ns on ns."taxonId"=ov."taxonId"
+ON CONFLICT ON CONSTRAINT unique_taxonid_vernacularname_noo DO NOTHING;
+
+select * from noo_vernacular;
+
+ALTER TABLE IF EXISTS new_vernacular RENAME TO new_vernacular_backup;
+
+ALTER TABLE IF EXISTS noo_vernacular RENAME TO new_vernacular;
+
+SELECT * FROM new_vernacular;

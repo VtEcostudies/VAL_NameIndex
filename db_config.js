@@ -1,4 +1,4 @@
-{
+exports.dbConfig = {
   "secret": "Very long string here",
 
 	"pg": {

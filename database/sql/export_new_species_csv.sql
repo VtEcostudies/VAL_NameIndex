@@ -2,13 +2,14 @@
 copy (select
 	"taxonId",
 	"taxonId",
-	"scientificName",
+	"canonicalName",
 	"scientificNameAuthorship",
 	"taxonRank",
 	"taxonomicStatus",
 	"acceptedNameUsageId",
 	"acceptedNameUsage",
 	"parentNameUsageId",
+	"parentNameUsage",
 	"nomenclaturalCode",
 	"specificEpithet",
 	"infraspecificEpithet",
@@ -16,17 +17,9 @@ copy (select
 	"vernacularName",
 	"datasetName",
 	"datasetId",
-	"kingdom",
-	"phylum",
-	"class",
-	"order",
-	"family",
-	"genus",
-	"species",
     "bibliographicCitation",
     "references",
-    "establishmentMeans",
-    "institutionCode",
-    "collectionCode"
+    "establishmentMeans"
+    --,"institutionCode" --this field is not part of taxonCore
 	from new_species)
-to 'C:\Users\jtloo\Documents\VCE\VAL_Data_Pipelines\VAL_NameIndex\repo\database\export\new_species.csv' delimiter ',' csv header;
+to 'C:\Users\jtloo\Documents\VCE\VAL_Data_Pipelines\VAL_NameIndex\repo\database\export\ipt\new_species.csv' delimiter ',' csv header;
