@@ -9,7 +9,7 @@ v."sex",
 v."language",
 v."countryCode",
 v."source",
-v."preferred"
+v."preferred" as "isPreferredName"
 from new_vernacular v
 inner join new_species s on s."taxonId"=v."taxonId"
 )

@@ -341,19 +341,19 @@ async function insertValMissing(gbif, idx) {
     //console.log('insertValMissing', val);
 
     var queryColumns = pgUtil.parseColumns(val, 1, [], [], [], speciesTable);
-
     const text = `insert into ${speciesTable} (${queryColumns.named}) values (${queryColumns.numbered}) returning "taxonId"`;
-      query(text, queryColumns.values)
-        .then(res => {
-          res.gbif = gbif;
-          res.val = val;
-          resolve(res);
-        })
-        .catch(err => {
-          err.gbif = gbif;
-          err.val = val;
-          reject(err);
-        })
+
+    query(text, queryColumns.values)
+      .then(res => {
+        res.gbif = gbif;
+        res.val = val;
+        resolve(res);
+      })
+      .catch(err => {
+        err.gbif = gbif;
+        err.val = val;
+        reject(err);
+      })
     } catch(err) {
       console.log('insertValMissing try/catch ERROR', err);
       err.gbif = gbif; err.val = val; err.idx = idx;

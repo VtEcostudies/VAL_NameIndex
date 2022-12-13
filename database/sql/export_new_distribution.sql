@@ -2,8 +2,7 @@
 --gbifId,establishmentMeans,locationID,locality,CountryCode
 --5389012,,ISO3166-2:US-VT,Vermont-US,US
 copy (select
---"taxonId",
-"taxonId" AS "gbifID",
+"taxonId",
 null AS "establishmentMeans",
 'ISO3166-2:US-VT' AS "locationID",
 'Vermont-US' AS "locality",

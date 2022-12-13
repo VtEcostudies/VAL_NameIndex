@@ -3,12 +3,12 @@
 
   File: 10_3_get_insert_inat_vernacular.js
 
-  Purpose: Retrieve vernacular names from iNaturalist and insert into ${vernacularTable}.
+  Purpose: Retrieve vernacular names from iNaturalist and insert into ${targetTable}.
 
   Specifics:
 
   Query taxa in ${speciesTable}, for ranks in ${ranksToQuery}, get their GBIF vernacular 
-  names from the iNat API, and insert into ${vernacularTable}.
+  names from the iNat API, and insert into ${targetTable}.
 
   iNat throttles their API, so I had to add a delay between requests. At first a 1-
   second delay was enough. Later, they throttled that, and I changed to 2 seconds.
@@ -29,7 +29,7 @@ var fs = require('fs');
 var Request = require("request");
 var moment = require('moment');
 var paths = require('./00_config').paths;
-const dbConfig = require('./db_config.json');
+const dbConfig = require('./db_config').dbConfig;
 const db = require('./VAL_Utilities/db_postgres');
 const pgUtil = require('./VAL_Utilities/db_pg_util');
 const log = require('./VAL_Utilities/97_utilities').log;
@@ -45,7 +45,7 @@ var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
 var offset = 0;
-var limit = 10; //25000; OPEN A VPN CONNECTION, AND CHANGE THIS TO A BIG NUMBER!!!!
+var limit = 2000; //25000; OPEN A VPN CONNECTION, AND CHANGE THIS TO A BIG NUMBER!!!!
 var delay = 0; //in seconds (on Windows)
 var where = 'true';//`"createdAt"::date > now()::date - interval '7 day'`;
 
@@ -53,8 +53,9 @@ logStream = fs.createWriteStream(`${logsDir}/${logFileName}`, {flags: 'w'});
 errStream = fs.createWriteStream(`${logsDir}/${errFileName}`, {flags: 'w'});
 outStream = fs.createWriteStream(`${logsDir}/${outFileName}`, {flags: 'a'});
 
-const speciesTable = 'new_species';
-const vernacularTable = 'new_vernacular';
+const sourceTable = 'new_vernacular'; //template table to create new table from
+const targetTable = 'mval_vernacular'; //table to create
+const speciesTable = 'mval_species'; //new_species; //species table name
 
 log(`config paths: ${JSON.stringify(paths)}`, logStream);
 log(`log file: ${logsDir}${logFileName}`, logStream, true);
@@ -70,7 +71,7 @@ db.connect(dbConfig.pg) //this produces an error message on failure
         .then(async res => {
           log(`${res.rowCount} ${speciesTable} taxa | First row: ${JSON.stringify(res.rows[0])}`, logStream, true);
           for (var i=0; i<res.rowCount; i++) {
-            log(`COUNT | ${offset+i}`, logStream, true);
+            log(`COUNT | ${offset+i}/${res.rowCount}`, logStream, true);
             process.execSync(`sleep ${delay}`);
             await getInatVernacularNames(res.rows[i], offset+i) //pass entire row...
               .then(async res => {
@@ -119,7 +120,7 @@ db.connect(dbConfig.pg) //this produces an error message on failure
   }) //end connect - no need to catch error, the call handles that
 
   function setColumns() {
-    return pgUtil.setColumns(vernacularTable) //new method stores table column arrays in db_pg_util by tableName
+    return pgUtil.setColumns(targetTable) //new method stores table column arrays in db_pg_util by tableName
       .then(ret => {
         pgUtil.setColumns(speciesTable);
       })
@@ -140,13 +141,13 @@ async function getValTaxa() {
 }
 
 /*
-Get VAL taxa having no vernacular name in ${vernacularTable}.
+Get VAL taxa having no vernacular name in ${targetTable}.
 */
 async function getValMissing() {
   var text = '';
   text = `select s."taxonId", s."canonicalName", s."taxonRank"
           from ${speciesTable} s
-          left join ${vernacularTable} v on s."taxonId"=v."taxonId"
+          left join ${targetTable} v on s."taxonId"=v."taxonId"
           where v."taxonId" is null
           and LOWER("taxonRank") IN ('species','subspecies','variety')
           offset ${offset}
@@ -168,7 +169,7 @@ function getInatVernacularNames(val, idx) {
         err.val = val;
         reject(err);
       } else {
-        if (body) {
+        if (body && body.results) {
           log(`\t RESULT(${idx}): getInatVernacularNames(${val.canonicalName}) | ${res.statusCode} | count: ${body.results?body.results.length:null} | ${parms.url}`, logStream, debug);
           if (body.results) {
             body.results.forEach((obj, jdx) => {
@@ -210,8 +211,8 @@ function insertInatValVernacular(inat, val) {
       val.language = 'en';
       val.preferred = 't'; //iNat only provides preferred common name
 
-      var qryColumns = pgUtil.parseColumns(val, 1, [], [], [], vernacularTable);
-      var text = `insert into ${vernacularTable} (${qryColumns.named}) values (${qryColumns.numbered}) returning "taxonId"`;
+      var qryColumns = pgUtil.parseColumns(val, 1, [], [], [], targetTable);
+      var text = `insert into ${targetTable} (${qryColumns.named}) values (${qryColumns.numbered}) returning "taxonId"`;
     } catch(err) {
       log(`ERROR WITHIN insertInatValVernacular | ${err}`);
       reject({err:err, inat:inat, val:val})
