@@ -32,17 +32,21 @@ var offset = 0;
 var limit = 35000;
 var where = 'true';//`"createdAt"::date > now()::date - interval '30 day'`;
 
-const dataDir = paths.dataDir; //path to directory holding inp data files - INCLUDING TRAILING SLASH
-const subDir = '00_vernacular_names/';
-const logsDir = "../logs_vernacular/";
+var dataDir = paths.dataDir; //path to directory holding inp data files - INCLUDING TRAILING SLASH
+var subDir = '00_vernacular_names/';
+
+//settings for eButterfly
+dataDir = 'C:/Users/jtloo/Documents/VCE/VAL_GBIF_Wordpress-Staging/species_datasets/eButterfly_species/';
+
+const logsDir = dataDir;
 const logFileName = 'get_insert_gbif_vernacular_names_' + moment().format('YYYYMMDD-HHmmsss') + '.txt';
 const errFileName = 'err_' + logFileName;
 const logStream = fs.createWriteStream(`${logsDir}${logFileName}`);
 const errStream = fs.createWriteStream(`${logsDir}${errFileName}`);
 
 const sourceTable = 'new_vernacular'; //template table to create new table from
-const targetTable = 'new_vernacular'; //table to create
-const speciesTable = 'new_species'; //new_species; //species table name
+const targetTable = 'ebw_vernacular';//'new_vernacular'; //table to create
+const speciesTable = 'ebw_species'; //new_species; //species table name
 
 log(`log file: ${logsDir}${logFileName}`, logStream, true);
 log(`err file: ${logsDir}${errFileName}`, logStream, true);
@@ -53,8 +57,8 @@ db.connect(dbConfig.pg) //this produces an error message on failure
       .finally(res => {
         setColumns()
         .then(res => {
-          getValTaxa()
-          //getValMissing()
+          //getValTaxa()
+          getValMissing()
             .then(async res => {
               log(`${res.rowCount} val_species taxa | First row: ${JSON.stringify(res.rows[0])}`, logStream, true);
               for (var i=0; i<res.rowCount; i++) {

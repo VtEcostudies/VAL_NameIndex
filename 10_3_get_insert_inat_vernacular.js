@@ -36,7 +36,11 @@ const log = require('./VAL_Utilities/97_utilities').log;
 
 const process = require('child_process');
 
-const logsDir = "../logs_vernacular/";
+//settings for eButterfly
+var dataDir = 'C:/Users/jtloo/Documents/VCE/VAL_GBIF_Wordpress-Staging/species_datasets/eButterfly_species/';
+
+const logsDir = dataDir;
+//const logsDir = "../logs_vernacular/";
 const logFileName = 'get_insert_inat_vernacular_names_' + moment().format('YYYYMMDD-HHmmsss') + '.txt';
 const errFileName = 'err_' + logFileName;
 const outFileName = 'inat_found_sciName_commonName.csv';
@@ -45,7 +49,7 @@ var wStream = []; //array of write streams
 var insCount = 0;
 var errCount = 0;
 var offset = 0;
-var limit = 2000; //25000; OPEN A VPN CONNECTION, AND CHANGE THIS TO A BIG NUMBER!!!!
+var limit = 300; //25000; OPEN A VPN CONNECTION, AND CHANGE THIS TO A BIG NUMBER!!!!
 var delay = 0; //in seconds (on Windows)
 var where = 'true';//`"createdAt"::date > now()::date - interval '7 day'`;
 
@@ -54,8 +58,8 @@ errStream = fs.createWriteStream(`${logsDir}/${errFileName}`, {flags: 'w'});
 outStream = fs.createWriteStream(`${logsDir}/${outFileName}`, {flags: 'a'});
 
 const sourceTable = 'new_vernacular'; //template table to create new table from
-const targetTable = 'mval_vernacular'; //table to create
-const speciesTable = 'mval_species'; //new_species; //species table name
+const targetTable = 'ebw_vernacular'; //'mval_vernacular'; //table to create
+const speciesTable = 'ebw_species'; //'mval_species'; //new_species; //species table name
 
 log(`config paths: ${JSON.stringify(paths)}`, logStream);
 log(`log file: ${logsDir}${logFileName}`, logStream, true);

@@ -8,7 +8,6 @@
   Datasets:
   https://www.gbif.org/occurrence/search?country=US&has_coordinate=false&state_province=Vermont%20(State)&state_province=Vermont&advanced=1
 
-
   Details:
     - bounce incoming taxonKey against speciesTable first
     - if key is found in speciesTable, ignore
@@ -43,11 +42,29 @@ var dataDir = paths.gbifDir; //path to directory holding source data files - INC
 var subDir = 'gbif_species_2022_11_01/';
 var fileName = 'species_gbif_vt_gadm'; // 1 of 2 download files with species from occs
 fileName = 'species_gbif_vt_state_province_no_coordinates'; // 2 of 2 download files with species from occs
+var sourceTable = 'new_species'; //template table to create new table from
+var speciesTable = 'new_species'; //new table name
+var errorTable = 'species_err';
 
-//paths and names for Marth's Vineyard species data
+//paths and names for Martha's Vineyard species data
+/*
 dataDir = 'C:/Users/jtloo/Documents/VCE/VAL_GBIF_Wordpress-Staging/species_datasets/mva_species_list/';
 subDir = '';
 fileName = 'mva_species_list';
+speciesTable = 'mval_species';
+*/
+//paths and names for eButterfly species data
+/*
+dataDir = 'C:/Users/jtloo/Documents/VCE/VAL_GBIF_Wordpress-Staging/species_datasets/eButterfly_species/';
+subDir = '';
+fileName = 'eButterfly_species';
+speciesTable = 'ebu_species';
+*/
+//paths and names for worldwide butterfly species data
+dataDir = 'C:/Users/jtloo/Documents/VCE/VAL_GBIF_Wordpress-Staging/species_datasets/all_butterfly_species/';
+subDir = '';
+fileName = 'all_butterfly_species';
+speciesTable = 'all_butterfly_species';
 
 var inpFileExt = '.tsv';
 var inpFileName = fileName + inpFileExt;
@@ -67,10 +84,6 @@ var fndCount = 0; //count records found in val_species
 var insCount = 0; //count records inserted
 var misCount = 0; //count records where key != nubKey
 var errCount = 0; //count errors
-
-const sourceTable = 'new_species'; //template table to create new table from
-const speciesTable = 'mval_species'; //new table name
-const errorTable = 'species_err';
 
 process.on('exit', function(code) {
   displayStats();

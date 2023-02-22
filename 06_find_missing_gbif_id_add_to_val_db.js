@@ -7,13 +7,15 @@
 
   Specifics:
 
-  Query missing primary taxonIds in table ${speciesTable} by querying all secondary
+  Query missing primary taxonIds in table ${speciesTable} by querying some (all) secondary
   and tertiary taxonIds in the database. Add missing taxa to the ${speciesTable} table.
 
   The query finds missing primary taxonIds for:
 
   parentNameUsageId
   acceptedNameUsageId
+
+  You can update the getValMissing query to include these:
 
   kingdomId
   phylumId
@@ -41,6 +43,14 @@ const log = require('./VAL_Utilities/97_utilities').log;
 var dataDir = paths.dataDir; //path to directory holding extracted GBIF DwCA species files
 var baseName = '00_Add_Missing_VAL_Taxa';
 var subDir = `${baseName}/`; //put output into a sub-dir so we can easily find it
+//settings for world wide butterflies
+dataDir = 'C:/Users/jtloo/Documents/VCE/VAL_GBIF_Wordpress-Staging/species_datasets/all_butterfly_species/';
+subDir = '';
+baseName = 'all_butterfly_species';
+const sourceTable = 'new_species'; //template table to create new table from
+const speciesTable = 'all_butterfly_species'; //'ebu_species'; //'mval_species'; //new_species; //new table name
+const errorTable = 'species_err';
+
 var logFileName = 'insert_missing_taxa_' + moment().format('YYYYMMDD-HHmmsss') + '.txt';
 var logStream = fs.createWriteStream(`${dataDir}${subDir}${logFileName}`, {flags: 'w'});
 //var logStream = null; //debugging
@@ -54,9 +64,6 @@ var delCount = 0;
 var errCount = 0;
 const debug = true; //turn on/off extra console logging, etc.
 
-const sourceTable = 'new_species'; //template table to create new table from
-const speciesTable = 'mval_species'; //new_species; //new table name
-const errorTable = 'species_err';
 
 process.on('exit', function(code) {
   log(`--------------------------------------------------------------------------------`, logStream, true);
@@ -70,8 +77,10 @@ log(`err file name: ${errFileName}`, logStream, true);
 
 connect(dbConfig.pg) //this produces an error message on failure
   .then(msg => {
+/*
     pgUtil.copyTableEmpty(sourceTable, speciesTable)
       .then(res => {
+*/
         setColumns()
           .then(res => {
             getValMissing()
@@ -201,10 +210,12 @@ connect(dbConfig.pg) //this produces an error message on failure
           .catch(err => {
             log(`setColumns ERROR | ${JSON.stringify(err)}`, logStream, true);
           })
+/*          
       })
       .catch(err => {
         log(`copyTableEmpty ERROR | ${err.message} | ${err.code}`, logStream, true);
       })
+*/      
   }) //end connect - no need to catch error, the call handles that
       
 function setColumns() {
